@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SHREE ADINATH SUGAR FACTORY - Multi-Login & MultiLang</title>
+
+<style>
+  body { font-family: Arial, sans-serif; margin:0; background:#f7f7f7; color:#333;}
+  .container { max-width: 960px; margin: auto; padding: 15px;}
+  h2, h3 { margin-top:10px; }
+  input, select, button { padding: 8px 12px; margin: 4px 2px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
+  button { background-color:#1976d2; color: white; border:none; cursor:pointer; }
+  button:hover { background-color: #135ca6; }
+  .btn-danger { background-color:#dc3545; }
+  .btn-danger:hover { background-color:#a52330; }
+  .hidden { display: none !important; }
+  .message { font-weight: 600; margin: 8px 0; }
+  .error { color: #dc3545; }
+  .success { color: #198754; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 14px; }
+  th, td { border: 1px solid #ccc; padding: 7px 10px; text-align: left; }
+  th { background-color: #e9ecef; }
+  .grid { display: grid; grid-template-columns: repeat(10,1fr); gap: 6px; margin-top: 10px; margin-bottom: 15px;}
+  .slot-box { padding: 8px; border: 1px solid #999; border-radius: 5px; text-align: center; font-size: 14px; min-height: 60px; background: #e7f3e7; }
+  .occupied { background: #ffebeb; border-color: #dc3545; position: relative; }
+  .occupied .tractor-icon { position: absolute; top: 6px; right: 6px; font-size: 18px; }
+  #loginBox { max-width: 360px; margin: 50px auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 0 12px #666; }
+  #logoutBtn { float: right; margin: 10px 0; }
+  #liveClock { font-weight: 600; }
+  .lang-toggle { float: right; margin: 10px 5px; background: #444; color: white; padding: 5px 10px; cursor: pointer; border-radius: 4px;}
+  @media(max-width: 600px) {
+    .grid { grid-template-columns: repeat(5,1fr); }
+    input, select, button { width: 100%; box-sizing: border-box; margin: 5px 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div id="loginBox">
+    <h2 data-lang="loginTitle">🔐 लॉगिन - शरि आदिनाथ साखर कारखाना</h2>
+
+    <label data-lang="selectRoleLabel">रोल निवडा: </label>
+    <select id="loginRole" onchange="updateLoginPlaceholders()">
+      <option value="gateman">Gateman (गेटमॅन)</option>
+      <option value="chairman">Chairman (चेअरमन)</option>
+      <option value="transport">Transport (वाहतूकदार)</option>
+      <option value="farmer">Farmer (शेतकरी)</option>
+      <option value="tractorOwner">Tractor Owner (ट्रॅक्टर मालक)</option>
+    </select><br/>
+
+    <input type="text" id="loginUser" placeholder="Username" autocomplete="off" /><br/>
+    <input type="password" id="loginPass" placeholder="Password" autocomplete="off" /><br/>
+
+    <div><label><input type="checkbox" id="showPass" /> <span data-lang="showPassword">पासवर्ड दाखवा</span></label></div>
+
+    <button onclick="login()" data-lang="loginButton">Login</button>
+    <p id="loginMessage" class="message error"></p>
+
+    <p style="font-size:12px; color:#555;">
+      उपलब्ध वापरकर्ते: <br/>
+      G (Gateman), C (Chairman), T (Transport), F (Farmer), O (Tractor Owner) <br/>
+      सर्व पासवर्ड: 0012
+    </p>
+
+    <div class="lang-toggle" onclick="toggleLang()">मराठी / English</div>
+  </div>
+
+  <div id="mainApp" class="hidden">
+
+    <button id="logoutBtn" onclick="logout()">🔄 <span data-lang="logoutText">Switch User & Logout</span></button>
+    <h2 data-lang="dashboardTitle">Dashboard - शरि आदिनाथ साखर कारखाना</h2>
+
+    <div>🕒 <span id="liveClock"></span></div>
+
+    <hr/>
+
+    <div id="dashboardReport" style="font-weight:bold; margin-bottom:20px;"></div>
+
+    <!-- PARKING GRID -->
+    <div>
+      <b data-lang="parkingTitle">🚜 पार्किंग स्लॉट आणि सध्या पार्क झालेले ट्रॅक्टर्स</b>
+      <div class="grid" id="parkingGrid"></div>
+    </div>
+
+    <!-- GATEMAN -->
+    <section id="gatemanSection" class="hidden" style="margin-top:20px;">
+      <h3 data-lang="gatemanTitle">गेटमॅन: ट्रॅक्टर इन/आउट आणि पार्किंग</h3>
+      <input id="gatemanTractorNo" placeholder="Tractor Number (उदा. MH01AB1234)" />
+      <input id="gatemanSlot" type="number" min="1" max="50" placeholder="Parking Slot (1-50)" />
+      <button onclick="tractorIn()" data-lang="tractorInBtn">Tractor In</button>
+      <button onclick="tractorOut()" data-lang="tractorOutBtn">Tractor Out</button>
+      <p id="gatemanMsg" class="message"></p>
+    </section>
+
+    <!-- CHAIRMAN -->
+    <section id="chairmanSection" class="hidden" style="margin-top:20px;">
+      <h3 data-lang="chairmanTitle">चेअरमन: ट्रॅक्टर व शेतकरी नोंदणी आणि व्यवस्थापन</h3>
+
+      <!-- Tractor registration -->
+      <div style="border:1px solid #ddd; background:#fff; padding:10px; border-radius:6px; margin-bottom:10px;">
+        <h4 data-lang="tractorRegistration">🚜 ट्रॅक्टर नोंदणी / संपादन</h4>
+        <input id="chairmanOwner" placeholder="Owner Name" />
+        <input id="chairmanTractorNo" placeholder="Tractor Number" />
+        <input id="chairmanWeight" type="number" placeholder="Weight (kg)" />
+        <input id="chairmanModel" placeholder="Model" />
+        <button onclick="saveTractor()" data-lang="saveTractorBtn">Save Tractor</button>
+        <input type="hidden" id="editingTractorIndex" value="-1" />
+        <p id="tractorMsg" class="message"></p>
+        <h5 data-lang="registeredTractors">नोंदणीकृत ट्रॅक्टर्स</h5>
+        <table id="tractorTable"><thead><tr><th data-lang="owner">Owner</th><th data-lang="number">Number</th><th data-lang="weight">Weight</th><th data-lang="model">Model</th><th data-lang="edit">Edit</th><th data-lang="delete">Delete</th></tr></thead><tbody></tbody></table>
+      </div>
+
+      <!-- Farmer registration -->
+      <div style="border:1px solid #ddd; background:#fff; padding:10px; border-radius:6px; margin-bottom:10px;">
+        <h4 data-lang="farmerRegistration">👨‍🌾 शेतकरी नोंदणी / संपादन</h4>
+        <input id="chairmanFarmerName" placeholder="Farmer Name" />
+        <input id="chairmanFarmerAadhar" placeholder="Aadhar Number" />
+        <input id="chairmanShetiGatNo" placeholder="Sheti Gat Number" />
+        <input id="chairmanMobile" placeholder="Mobile Number" />
+        <input id="chairmanAccountNo" placeholder="Account Number" />
+        <input id="chairmanBankName" placeholder="Bank Name" />
+        <input id="chairmanIFSC" placeholder="IFSC Code" />
+        <button onclick="saveFarmer()" data-lang="saveFarmerBtn">Save Farmer</button>
+        <input type="hidden" id="editingFarmerIndex" value="-1" />
+        <p id="farmerMsg" class="message"></p>
+        <h5 data-lang="registeredFarmers">नोंदणीकृत शेतकरी</h5>
+        <table id="farmerTable"><thead><tr><th data-lang="name">Name</th><th>Aadhar</th><th data-lang="mobile">Mobile</th><th data-lang="edit">Edit</th><th data-lang="delete">Delete</th></tr></thead><tbody></tbody></table>
+      </div>
+
+      <!-- Additional reports only for chairman -->
+      <div>
+        <h4 data-lang="inOutBook">📝 ट्रॅक्टर इनआउट बुक</h4>
+        <div style="max-height: 160px; overflow-y:auto;">
+          <table id="inOutBookTable" border="1" style="width:100%; border-collapse: collapse;">
+            <thead><tr><th>Tractor Number</th><th>Slot</th><th>In Time</th><th>Out Time</th></tr></thead><tbody></tbody>
+          </table>
+        </div>
+
+        <h4 data-lang="farmerSalesBook" style="margin-top:15px;">🍬 शेतकरी ऊस विक्री बुक</h4>
+        <div style="max-height: 160px; overflow-y:auto;">
+          <table id="farmerSalesTable" border="1" style="width:100%; border-collapse: collapse;">
+            <thead><tr><th>Farmer Name</th><th>Sugarcane Weight (tons)</th><th>Date</th></tr></thead><tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TRANSPORT -->
+    <section id="transportSection" class="hidden" style="margin-top:20px;">
+      <h3 data-lang="transportTitle">🚚 वाहतूकदार विभाग : शेतकरी आणि ट्रान्सपोर्टरचे बिल</h3>
+
+      <select id="transportTractorSelect">
+        <option value="">Select Tractor</option>
+      </select><br/><br/>
+
+      <input id="transportFarmerName" placeholder="Farmer Name" /><br/>
+      <input id="transportSugarcaneWeight" type="number" placeholder="Sugarcane Weight (tons)" /><br/>
+      <input id="transportDistance" type="number" placeholder="Distance Travelled (km)" /><br/>
+      <input id="transportDiesel" type="number" placeholder="Diesel Given (litres)" /><br/>
+     
+      <button onclick="generateTransportBill()" data-lang="genTransportBillBtn">Generate Transport Owner Bill</button>
+      <button onclick="generateFarmerBill()" data-lang="genFarmerBillBtn">Generate Farmer Bill</button>
+      <p id="transportMsg" class="message"></p>
+
+      <h4 data-lang="transportHistoryTitle" style="margin-top:15px;">📋 Transport History</h4>
+      <div style="max-height: 180px; overflow-y:auto;">
+        <table id="transportHistoryTable" border="1" style="width:100%; border-collapse: collapse;">
+          <thead><tr><th>Tractor Number</th><th>Farmer Name</th><th>Weight (tons)</th><th>Distance (km)</th><th>Diesel (L)</th><th>Date</th></tr></thead><tbody></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:10px;">
+        <button onclick="printSection('transportHistoryTable')" data-lang="printTransportBtn">Print Transport History</button>
+        <button onclick="printSection('farmerSalesTable')" data-lang="printFarmerSalesBtn">Print Farmer Sales Bill</button>
+      </div>
+
+    </section>
+
+    <!-- FARMER VIEW -->
+    <section id="farmerSection" class="hidden" style="margin-top:20px;">
+      <h3 data-lang="farmerTitle">शेतकरी - आपले विक्री विवरण आणि पार्किंग माहिती</h3>
+      <p><b data-lang="welcomeFarmer">Welcome</b>, <span id="farmerLoginName"></span></p>
+
+      <h4 data-lang="yourSales">आपल्या विक्रीची यादी (Sugarcane Sales)</h4>
+      <table id="farmerOwnSalesTable" border="1" style="width:100%; border-collapse: collapse;">
+        <thead><tr><th>Weight (tons)</th><th>Date</th></tr></thead><tbody></tbody>
+      </table>
+
+      <h4 data-lang="yourSlots" style="margin-top:15px;">आपली ट्रॅक्टर पार्किंग माहिती</h4>
+      <table id="farmerTractorParkingTable" border="1" style="width:100%; border-collapse: collapse;">
+        <thead><tr><th>Tractor Number</th><th>Slot</th><th>In Time</th><th>Out Time</th></tr></thead><tbody></tbody>
+      </table>
+    </section>
+
+    <!-- TRACTOR OWNER VIEW -->
+    <section id="tractorOwnerSection" class="hidden" style="margin-top:20px;">
+      <h3 data-lang="tractorOwnerTitle">ट्रॅक्टर मालक - आपली ट्रॅक्टर पार्किंग व परिचालन माहिती</h3>
+      <p><b data-lang="welcomeOwner">Welcome</b>, <span id="tractorOwnerLoginName"></span></p>
+
+      <h4 data-lang="yourTractors">आपले ट्रॅक्टर्स आणि त्यांची पार्किंग माहिती</h4>
+      <table id="ownerTractorParkingTable" border="1" style="width:100%; border-collapse: collapse;">
+        <thead><tr><th>Number</th><th>Slot</th><th>In Time</th><th>Out Time</th></tr></thead><tbody></tbody>
+      </table>
+    </section>
+
+  </div>
+
+</div>
+
+<script>
+  // Data storage
+  let tractorRegistry = JSON.parse(localStorage.getItem("tractorRegistry")) || [];
+  let farmerRegistry = JSON.parse(localStorage.getItem("farmerRegistry")) || [];
+  let parkedTractors = JSON.parse(localStorage.getItem("parkedTractors")) || {};
+  let inOutBook = JSON.parse(localStorage.getItem("inOutBook")) || [];
+  let farmerSalesBook = JSON.parse(localStorage.getItem("farmerSalesBook")) || [];
+  let transportHistory = JSON.parse(localStorage.getItem("transportHistory")) || [];
+
+  let currentRole = "";
+  let loginUser = "";
+  let currentLang = "mr"; // 'mr' or 'en'
+
+  // Multilanguage dictionary
+  const languageStrings = {
+    mr: {
+      loginTitle: "🔐 लॉगिन - शरि आदिनाथ साखर कारखाना",
+      selectRoleLabel: "रोल निवडा:",
+      showPassword: "पासवर्ड दाखवा",
+      loginButton: "लॉगिन",
+      logoutText: "युझर स्विच करा व बाहेर/paper ciknva",
+      dashboardTitle: "डॅशबोर्ड - शरि आदिनाथ साखर कारखाना",
+      parkingTitle: "🚜 पार्किंग स्लॉट आणि सध्या पार्क झालेले ट्रॅक्टर्स",
+      gatemanTitle: "गेटमॅन: ट्रॅक्टर इन/आउट आणि पार्किंग",
+      tractorInBtn: "ट्रॅक्टर इन",
+      tractorOutBtn: "ट्रॅक्टर आउट",
+      chairmanTitle: "चेअरमन: ट्रॅक्टर व शेतकरी नोंदणी आणि व्यवस्थापन",
+      tractorRegistration: "🚜 ट्रॅक्टर नोंदणी / संपादन",
+      saveTractorBtn: "ट्रॅक्टर नोंदवा",
+      registeredTractors: "नोंदणीकृत ट्रॅक्टर्स",
+      owner: "मालक",
+      number: "क्रमांक",
+      weight: "वजन",
+      model: "मॉडेल",
+      edit: "संपादन",
+      delete: "हटवा",
+      farmerRegistration: "👨‍🌾 शेतकरी नोंदणी / संपादन",
+      saveFarmerBtn: "शेतकरी नोंदवा",
+      registeredFarmers: "नोंदणीकृत शेतकरी",
+      name: "नाव",
+      mobile: "मोबाईल",
+      inOutBook: "📝 ट्रॅक्टर इनआउट बुक",
+      farmerSalesBook: "🍬 शेतकरी ऊस विक्री बुक",
+      transportTitle: "🚚 वाहतूकदार विभाग : शेतकरी आणि ट्रान्सपोर्टरचे बिल",
+      genTransportBillBtn: "ट्रान्सपोर्ट मालक बिल तयार करा",
+      genFarmerBillBtn: "शेतकरी बिल तयार करा",
+      transportHistoryTitle: "📋 ट्रान्सपोर्ट इतिहास",
+      printTransportBtn: "प्रिंट ट्रान्सपोर्ट इतिहास",
+      printFarmerSalesBtn: "प्रिंट शेतकरी विक्री बिल",
+      farmerTitle: "शेतकरी - आपले विक्री विवरण आणि पार्किंग माहिती",
+      welcomeFarmer: "आपले स्वागत आहे",
+      yourSales: "आपल्या विक्रीची यादी (Sugarcane Sales)",
+      yourSlots: "आपली ट्रॅक्टर पार्किंग माहिती",
+      tractorOwnerTitle: "ट्रॅक्टर मालक - आपली ट्रॅक्टर पार्किंग व परिचालन माहिती",
+      welcomeOwner: "आपले स्वागत आहे",
+      yourTractors: "आपले ट्रॅक्टर्स आणि त्यांची पार्किंग माहिती"
+    },
+    en: {
+      loginTitle: "🔐 Login - Shree Adinath Sugar Factory",
+      selectRoleLabel: "Select Role:",
+      showPassword: "Show Password",
+      loginButton: "Login",
+      logoutText: "Switch User & Logout",
+      dashboardTitle: "Dashboard - Shree Adinath Sugar Factory",
+      parkingTitle: "🚜 Parking Slots and Currently Parked Tractors",
+      gatemanTitle: "Gateman: Tractor In/Out and Parking",
+      tractorInBtn: "Tractor In",
+      tractorOutBtn: "Tractor Out",
+      chairmanTitle: "Chairman: Tractor and Farmer Registration & Management",
+      tractorRegistration: "🚜 Tractor Registration / Edit",
+      saveTractorBtn: "Save Tractor",
+      registeredTractors: "Registered Tractors",
+      owner: "Owner",
+      number: "Number",
+      weight: "Weight",
+      model: "Model",
+      edit: "Edit",
+      delete: "Delete",
+      farmerRegistration: "👨‍🌾 Farmer Registration / Edit",
+      saveFarmerBtn: "Save Farmer",
+      registeredFarmers: "Registered Farmers",
+      name: "Name",
+      mobile: "Mobile",
+      inOutBook: "📝 Tractor In-Out Book",
+      farmerSalesBook: "🍬 Farmer Sugarcane Sales Book",
+      transportTitle: "🚚 Transport Section: Farmer and Transporter Bills",
+      genTransportBillBtn: "Generate Transport Owner Bill",
+      genFarmerBillBtn: "Generate Farmer Bill",
+      transportHistoryTitle: "📋 Transport History",
+      printTransportBtn: "Print Transport History",
+      printFarmerSalesBtn: "Print Farmer Sales Bill",
+      farmerTitle: "Farmer - Your Sales and Parking Info",
+      welcomeFarmer: "Welcome",
+      yourSales: "Your Sales List (Sugarcane Sales)",
+      yourSlots: "Your Tractor Parking Info",
+      tractorOwnerTitle: "Tractor Owner - Your Tractor Parking and Operations",
+      welcomeOwner: "Welcome",
+      yourTractors: "Your Tractors and Their Parking Info"
+    }
+  };
+
+  function translatePage() {
+    document.querySelectorAll('[data-lang]').forEach(el => {
+      const key = el.getAttribute('data-lang');
+      if(languageStrings[currentLang] && languageStrings[currentLang][key]) {
+        el.innerText = languageStrings[currentLang][key];
+      }
+    });
+    // Update placeholders separately
+    updateLoginPlaceholders();
+  }
+
+  function toggleLang() {
+    currentLang = (currentLang === "mr") ? "en" : "mr";
+    translatePage();
+  }
+
+  function updateLoginPlaceholders() {
+    const role = document.getElementById('loginRole').value;
+    const userInput = document.getElementById('loginUser');
+    const passInput = document.getElementById('loginPass');
+    if(currentLang === 'mr') {
+      if(role==='gateman') userInput.placeholder = "वापरकर्ता नाव (उदा. G)";
+      else if(role==='chairman') userInput.placeholder = "वापरकर्ता नाव (उदा. C)";
+      else if(role==='transport') userInput.placeholder = "वापरकर्ता नाव (उदा. T)";
+      else if(role==='farmer') userInput.placeholder = "शेतकरी ID (उदा. F001)";
+      else if(role==='tractorOwner') userInput.placeholder = "ट्रॅक्टर मालक ID (उदा. O001)";
+      passInput.placeholder = "पासवर्ड";
+    } else {
+      if(role==='gateman') userInput.placeholder = "Username (e.g. G)";
+      else if(role==='chairman') userInput.placeholder = "Username (e.g. C)";
+      else if(role==='transport') userInput.placeholder = "Username (e.g. T)";
+      else if(role==='farmer') userInput.placeholder = "Farmer ID (e.g. F001)";
+      else if(role==='tractorOwner') userInput.placeholder = "Tractor Owner ID (e.g. O001)";
+      passInput.placeholder = "Password";
+    }
+  }
+
+  document.getElementById('showPass').addEventListener('change', () => {
+    const passInput = document.getElementById('loginPass');
+    passInput.type = document.getElementById('showPass').checked ? 'text' : 'password';
+  });
+
+  // Hardcoded users for demo (can be extended or saved in localStorage)
+  const users = [
+    { id: 'G', role: 'gateman', password: '0012' },
+    { id: 'C', role: 'chairman', password: '0012' },
+    { id: 'T', role: 'transport', password: '0012' },
+    { id: 'F001', role: 'farmer', password: '0012' },
+    { id: 'O001', role: 'tractorOwner', password: '0012' }
+  ];
+
+  function login() {
+    const inputUser = document.getElementById('loginUser').value.trim();
+    const inputPass = document.getElementById('loginPass').value.trim();
+    const selectedRole = document.getElementById('loginRole').value;
+    const msg = document.getElementById('loginMessage');
+    msg.textContent = '';
+
+    if(!inputUser || !inputPass) {
+      msg.textContent = currentLang==='mr' ? "सर्व फील्ड भरा." : "Please fill all fields.";
+      msg.classList.add("error");
+      return;
+    }
+
+    let userObj = users.find(u => u.id.toLowerCase() === inputUser.toLowerCase() && u.password === inputPass && u.role === selectedRole);
+    if(!userObj) {
+      msg.textContent = currentLang==='mr' ? "अवैध क्रेडेन्शियल्स." : "Invalid credentials.";
+      msg.classList.add("error");
+      return;
+    }
+
+    // Login success
+    currentRole = userObj.role;
+    loginUser = userObj.id;
+    msg.textContent = '';
+    document.getElementById('loginBox').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    showRoleSections();
+    initApp();
+  }
+
+  function logout() {
+    currentRole = "";
+    loginUser = "";
+    // Clear UI & reset
+    document.getElementById('loginBox').classList.remove('hidden');
+    document.getElementById('mainApp').classList.add('hidden');
+    document.getElementById('loginUser').value = '';
+    document.getElementById('loginPass').value = '';
+    document.getElementById('loginMessage').textContent = '';
+    // Hide all role sections
+    document.querySelectorAll('section').forEach(sec => sec.classList.add('hidden'));
+  }
+
+  function showRoleSections() {
+    document.getElementById('gatemanSection').classList.add('hidden');
+    document.getElementById('chairmanSection').classList.add('hidden');
+    document.getElementById('transportSection').classList.add('hidden');
+    document.getElementById('farmerSection').classList.add('hidden');
+    document.getElementById('tractorOwnerSection').classList.add('hidden');
+
+    if(currentRole === 'gateman') document.getElementById('gatemanSection').classList.remove('hidden');
+    else if(currentRole === 'chairman') document.getElementById('chairmanSection').classList.remove('hidden');
+    else if(currentRole === 'transport') document.getElementById('transportSection').classList.remove('hidden');
+    else if(currentRole === 'farmer') {
+      document.getElementById('farmerSection').classList.remove('hidden');
+      showFarmerData();
+    }
+    else if(currentRole === 'tractorOwner') {
+      document.getElementById('tractorOwnerSection').classList.remove('hidden');
+      showTractorOwnerData();
+    }
+  }
+
+  // Update Live Clock & Dashboard Reports
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('liveClock').textContent = now.toLocaleTimeString(currentLang==='mr' ? 'mr-IN' : 'en-US');
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // Save all data to localStorage
+  function saveAll() {
+    localStorage.setItem('tractorRegistry', JSON.stringify(tractorRegistry));
+    localStorage.setItem('farmerRegistry', JSON.stringify(farmerRegistry));
+    localStorage.setItem('parkedTractors', JSON.stringify(parkedTractors));
+    localStorage.setItem('inOutBook', JSON.stringify(inOutBook));
+    localStorage.setItem('farmerSalesBook', JSON.stringify(farmerSalesBook));
+    localStorage.setItem('transportHistory', JSON.stringify(transportHistory));
+  }
+
+  // Initialization after login
+  function initApp() {
+    updateDashboard();
+    renderParkingGrid();
+    renderTractorTable();
+    renderFarmerTable();
+    renderInOutBookTable();
+    renderFarmerSalesTable();
+    renderTransportHistoryTable();
+    populateTransportDropdown();
+  }
+
+  // Dashboard summary for all roles
+  function updateDashboard() {
+    if(currentRole === 'farmer') {
+      document.getElementById('dashboardReport').textContent = '';
+      return;
+    }
+    if(currentRole === 'tractorOwner') {
+      document.getElementById('dashboardReport').textContent = '';
+      return;
+    }
+    // For others show stats
+    const parkedCount = Object.values(parkedTractors).filter(t => !t.timeOut).length;
+    const today = new Date().toLocaleDateString();
+    const inOutToday = inOutBook.filter(e=> e.inTime?.startsWith(today)).length;
+    const sugarcaneToday = farmerSalesBook.filter(f=> f.date === today).reduce((a,b) => a + parseFloat(b.sugarcaneWeight || 0), 0);
+    let farmerTotals = {};
+    for(const sale of farmerSalesBook){
+      farmerTotals[sale.farmerName] = (farmerTotals[sale.farmerName]||0) + parseFloat(sale.sugarcaneWeight || 0);
+    }
+    const sortedFarmers = Object.entries(farmerTotals).sort((a,b)=> b[1] - a[1]).slice(0,5);
+    const topFarmersStr = sortedFarmers.length ? sortedFarmers.map(f=> `${f[0]} (${f[1]} टन)`).join(', ') : 'नाही';
+
+    const d = {
+      mr:`🚜 पार्क झालेले ट्रॅक्टर्स: ${parkedCount} | आजचे In/Out: ${inOutToday} | आजचा ऊस: ${sugarcaneToday.toFixed(2)} टन | टॉप ५ शेतकरी: ${topFarmersStr}`,
+      en:`🚜 Parked Tractors: ${parkedCount} | Today's In/Out: ${inOutToday} | Sugarcane Today: ${sugarcaneToday.toFixed(2)} tons | Top 5 Farmers: ${topFarmersStr}`
+    };
+    document.getElementById('dashboardReport').textContent = d[currentLang];
+  }
+
+  // Parking Grid Render
+  function renderParkingGrid(){
+    const grid = document.getElementById('parkingGrid');
+    grid.innerHTML = '';
+    const maxSlots = 50;
+    for(let i=1; i<=maxSlots; i++){
+      let occupiedTractor = null;
+      for(let tn in parkedTractors){
+        if(parkedTractors[tn].slot === i && !parkedTractors[tn].timeOut){
+          occupiedTractor = tn;
+          break;
+        }
+      }
+      let div = document.createElement('div');
+      if(occupiedTractor){
+        div.className = 'slot-box occupied';
+        div.innerHTML = `Slot ${i} <br>🚜 ${occupiedTractor}`;
+      } else {
+        div.className = 'slot-box';
+        div.innerText = `Slot ${i}`;
+      }
+      grid.appendChild(div);
+    }
+  }
+
+  // --- Gateman controls ----
+  function tractorIn() {
+    if(currentRole !== 'gateman') { alert(currentLang==='mr' ? "परवानगी नाही" : "Permission denied"); return;}
+    const tnum = document.getElementById('gatemanTractorNo').value.trim().toUpperCase();
+    const slot = parseInt(document.getElementById('gatemanSlot').value);
+    let msgEl = document.getElementById('gatemanMsg');
+    msgEl.className = 'message';
+    msgEl.textContent = '';
+
+    if(!tnum || !slot || slot < 1 || slot >50){
+      msgEl.textContent = currentLang==='mr' ? 'कृपया वैध ट्रॅक्टर नंबर आणि स्लॉट द्या' : 'Enter valid tractor number and slot';
+      msgEl.classList.add('error');
+      return;
+    }
+    if(!tractorRegistry.find(t=>t.tractorNumber === tnum)){
+      msgEl.textContent = currentLang==='mr' ? `ट्रॅक्टर ${tnum} नोंदणीकृत नाही` : `Tractor ${tnum} not registered`;
+      msgEl.classList.add('error');
+      return;
+    }
+    for(let t in parkedTractors){
+      if(parkedTractors[t].slot === slot && !parkedTractors[t].timeOut){
+        msgEl.textContent = currentLang==='mr' ? `पार्किंग स्लॉट ${slot} आधीच व्यापलेला आहे` : 'Slot already occupied';
+        msgEl.classList.add('error');
+        return;
+      }
+    }
+    if(parkedTractors[tnum] && !parkedTractors[tnum].timeOut) {
+      msgEl.textContent = currentLang==='mr' ? 'ट्रॅक्टर आधीच पार्क आहे' : 'Tractor already parked';
+      msgEl.classList.add('error');
+      return;
+    }
+
+    const nowStr = new Date().toLocaleString();
+    parkedTractors[tnum] = { slot, timeIn: nowStr, timeOut: null};
+    inOutBook.push({tractorNumber: tnum, slot, inTime: nowStr, outTime: ""});
+    saveAll();
+    msgEl.textContent = currentLang==='mr' ? `ट्रॅक्टर ${tnum} पार्किंग स्लॉट ${slot} वर पार्क केला` : `Tractor ${tnum} parked at slot ${slot}`;
+    msgEl.classList.add('success');
+    document.getElementById('gatemanTractorNo').value = '';
+    document.getElementById('gatemanSlot').value = '';
+    initApp();
+  }
+
+  function tractorOut(){
+    if(currentRole !== 'gateman') { alert(currentLang==='mr' ? "परवानगी नाही" : "Permission denied"); return;}
+    const tnum = document.getElementById('gatemanTractorNo').value.trim().toUpperCase();
+    let msgEl = document.getElementById('gatemanMsg');
+    msgEl.className = 'message';
+    msgEl.textContent = '';
+
+    if(!tnum){
+      msgEl.textContent = currentLang==='mr' ? 'ट्रॅक्टर नंबर प्रविष्ट करा' : 'Enter tractor number';
+      msgEl.classList.add('error');
+      return;
+    }
+    if(!tractorRegistry.find(t=>t.tractorNumber === tnum)){
+      msgEl.textContent = currentLang==='mr' ? 'ट्रॅक्टर नोंदणीकृत नाही' : 'Tractor not registered';
+      msgEl.classList.add('error');
+      return;
+    }
+    if(!parkedTractors[tnum] || parkedTractors[tnum].timeOut){
+      msgEl.textContent = currentLang==='mr' ? 'ट्रॅक्टर सध्या पार्क नाही' : 'Tractor not currently parked';
+      msgEl.classList.add('error');
+      return;
+    }
+
+    const nowStr = new Date().toLocaleString();
+    parkedTractors[tnum].timeOut = nowStr;
+    for(let i=inOutBook.length-1;i>=0;i--){
+      if(inOutBook[i].tractorNumber === tnum && !inOutBook[i].outTime){
+        inOutBook[i].outTime = nowStr;
+        break;
+      }
+    }
+    saveAll();
+    msgEl.textContent = currentLang==='mr' ? `ट्रॅक्टर ${tnum} पार्किंगमधून बाहेर निघाला` : `Tractor ${tnum} exited parking`;
+    msgEl.classList.add('success');
+    document.getElementById('gatemanTractorNo').value = '';
+    initApp();
+  }
+
+  // ----- Chairman Section -----
+  function renderTractorTable(){
+    const tbody = document.querySelector('#tractorTable tbody');
+    tbody.innerHTML = '';
+    tractorRegistry.forEach((tr, idx) => {
+      let trEl = document.createElement('tr');
+      trEl.innerHTML = `
+        <td>${tr.owner}</td>
+        <td>${tr.tractorNumber}</td>
+        <td>${tr.weight}</td>
+        <td>${tr.model}</td>
+        <td><button onclick="editTractor(${idx})" data-lang="edit">Edit</button></td>
+        <td><button class="btn-danger" onclick="deleteTractor(${idx})" data-lang="delete">Delete</button></td>
+      `;
+      tbody.appendChild(trEl);
+    });
+    translatePage();
+  }
+
+  function saveTractor() {
+    const owner = document.getElementById('chairmanOwner').value.trim();
+    const tractorNumber = document.getElementById('chairmanTractorNo').value.trim().toUpperCase();
+    const weight = document.getElementById('chairmanWeight').value.trim();
+    const model = document.getElementById('chairmanModel').value.trim();
+    const msg = document.getElementById('tractorMsg');
+    msg.textContent = '';
+    msg.className = 'message';
+
+    if(!owner || !tractorNumber || !weight || !model){
+      msg.textContent = currentLang==='mr' ? 'सर्व फील्ड भरा' : "Fill all fields";
+      msg.classList.add('error');
+      return;
+    }
+
+    const editIndex = parseInt(document.getElementById('editingTractorIndex').value);
+    if(editIndex === -1){
+      if(tractorRegistry.find(t=>t.tractorNumber === tractorNumber)) {
+        msg.textContent = currentLang==='mr' ? 'ट्रॅक्टर नंबर आधीच नोंदणीकृत आहे' : "Tractor number already registered";
+        msg.classList.add('error');
+        return;
+      }
+      tractorRegistry.push({owner, tractorNumber, weight, model});
+      msg.textContent = currentLang==='mr' ? 'नवीन ट्रॅक्टर यशस्वीरित्या नोंदवला' : "New tractor registered successfully";
+      msg.classList.add('success');
+    } else {
+      // update
+      tractorRegistry[editIndex] = {owner, tractorNumber, weight, model};
+      msg.textContent = currentLang==='mr' ? 'ट्रॅक्टर माहिती अपडेट केली' : "Tractor info updated";
+      msg.classList.add('success');
+      document.getElementById('editingTractorIndex').value = -1;
+    }
+    clearTractorForm();
+    saveAll();
+    renderTractorTable();
+    initApp();
+  }
+
+  function editTractor(idx){
+    const tr = tractorRegistry[idx];
+    document.getElementById('chairmanOwner').value = tr.owner;
+    document.getElementById('chairmanTractorNo').value = tr.tractorNumber;
+    document.getElementById('chairmanWeight').value = tr.weight;
+    document.getElementById('chairmanModel').value = tr.model;
+    document.getElementById('editingTractorIndex').value = idx;
+    window.scrollTo({top: 0, behavior:'smooth'});
+  }
+
+  function deleteTractor(idx){
+    if(confirm(currentLang==='mr' ? 'तुम्हाला खात्री आहे का?' : 'Are you sure?')){
+      tractorRegistry.splice(idx,1);
+      saveAll();
+      renderTractorTable();
+      initApp();
+    }
+  }
+
+  function clearTractorForm(){
+    document.getElementById('chairmanOwner').value = '';
+    document.getElementById('chairmanTractorNo').value = '';
+    document.getElementById('chairmanWeight').value = '';
+    document.getElementById('chairmanModel').value = '';
+    document.getElementById('editingTractorIndex').value = -1;
+  }
+
+  // --- Farmer section ---
+  function renderFarmerTable(){
+    const tbody = document.querySelector('#farmerTable tbody');
+    tbody.innerHTML = '';
+    farmerRegistry.forEach((f,i) =>{
+      let tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${f.name}</td>
+        <td>${f.aadhar}</td>
+        <td>${f.mobile}</td>
+        <td><button onclick="editFarmer(${i})" data-lang="edit">Edit</button></td>
+        <td><button class="btn-danger" onclick="deleteFarmer(${i})" data-lang="delete">Delete</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    translatePage();
+  }
+
+  function saveFarmer(){
+    const name = document.getElementById('chairmanFarmerName').value.trim();
+    const aadhar = document.getElementById('chairmanFarmerAadhar').value.trim();
+    const shetiGatNo = document.getElementById('chairmanShetiGatNo').value.trim();
+    const mobile = document.getElementById('chairmanMobile').value.trim();
+    const accountNo = document.getElementById('chairmanAccountNo').value.trim();
+    const bankName = document.getElementById('chairmanBankName').value.trim();
+    const ifsc = document.getElementById('chairmanIFSC').value.trim();
+    const msg = document.getElementById('farmerMsg');
+    msg.textContent = '';
+    msg.className = 'message';
+
+    if(!name || !aadhar || !shetiGatNo || !mobile || !accountNo || !bankName || !ifsc){
+      msg.textContent = currentLang==='mr' ? 'सर्व फील्ड भरा' : 'Fill all fields';
+      msg.classList.add('error');
+      return;
+    }
+
+    const editIndex = parseInt(document.getElementById('editingFarmerIndex').value);
+    if(editIndex === -1){
+      if(farmerRegistry.find(f=> f.aadhar === aadhar)){
+        msg.textContent = currentLang==='mr' ? 'ही आधार क्र. आधीच आहे' : 'Aadhar already registered';
+        msg.classList.add('error');
+        return;
+      }
+      farmerRegistry.push({name,aadhar,shettiGatNo,mobile,accountNo,bankName,ifsc});
+      msg.textContent = currentLang==='mr' ? 'नवीन शेतकरी यशस्वीरित्या नोंदवला' : 'New farmer registered successfully';
+      msg.classList.add('success');
+    } else {
+      farmerRegistry[editIndex] = {name,aadhar,shettiGatNo,mobile,accountNo,bankName,ifsc};
+      msg.textContent = currentLang==='mr' ? 'शेतकरी माहिती अपडेट केली' : 'Farmer info updated';
+      msg.classList.add('success');
+      document.getElementById('editingFarmerIndex').value = -1;
+    }
+    clearFarmerForm();
+    saveAll();
+    renderFarmerTable();
+    initApp();
+  }
+
+  function editFarmer(idx){
+    const f = farmerRegistry[idx];
+    document.getElementById('chairmanFarmerName').value = f.name;
+    document.getElementById('chairmanFarmerAadhar').value = f.aadhar;
+    document.getElementById('chairmanShetiGatNo').value = f.shettiGatNo;
+    document.getElementById('chairmanMobile').value = f.mobile;
+    document.getElementById('chairmanAccountNo').value = f.accountNo;
+    document.getElementById('chairmanBankName').value = f.bankName;
+    document.getElementById('chairmanIFSC').value = f.ifsc;
+    document.getElementById('editingFarmerIndex').value = idx;
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+
+  function deleteFarmer(idx){
+    if(confirm(currentLang==='mr' ? 'तुम्हाला खात्री आहे का?' : 'Are you sure?')){
+      farmerRegistry.splice(idx,1);
+      saveAll();
+      renderFarmerTable();
+      initApp();
+    }
+  }
+
+  function clearFarmerForm(){
+    document.getElementById('chairmanFarmerName').value='';
+    document.getElementById('chairmanFarmerAadhar').value='';
+    document.getElementById('chairmanShetiGatNo').value='';
+    document.getElementById('chairmanMobile').value='';
+    document.getElementById('chairmanAccountNo').value='';
+    document.getElementById('chairmanBankName').value='';
+    document.getElementById('chairmanIFSC').value='';
+    document.getElementById('editingFarmerIndex').value=-1;
+  }
+
+  // Render In-Out book for chairman
+  function renderInOutBookTable() {
+    const tbody = document.querySelector('#inOutBookTable tbody');
+    tbody.innerHTML = '';
+    inOutBook.forEach(e => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${e.tractorNumber}</td><td>${e.slot}</td><td>${e.inTime}</td><td>${e.outTime || '-'}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Render Farmer Sales Book for chairman (see all farmers sales)
+  function renderFarmerSalesTable() {
+    const tbody = document.querySelector('#farmerSalesTable tbody');
+    tbody.innerHTML = '';
+    farmerSalesBook.forEach(f => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${f.farmerName}</td><td>${f.sugarcaneWeight}</td><td>${f.date}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // --- Transport Section functions ---
+  function renderTransportHistoryTable(){
+    const tbody = document.querySelector('#transportHistoryTable tbody');
+    tbody.innerHTML = '';
+    transportHistory.forEach(t => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${t.tractorNumber}</td><td>${t.farmerName}</td><td>${t.weight}</td><td>${t.distance}</td><td>${t.diesel}</td><td>${t.date}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function populateTransportDropdown(){
+    const select = document.getElementById('transportTractorSelect');
+    select.innerHTML = '<option value="">Select Tractor</option>';
+    for(const tNum in parkedTractors){
+      if(!parkedTractors[tNum].timeOut){
+        let option = document.createElement('option');
+        option.value = tNum;
+        option.text = tNum;
+        select.appendChild(option);
+      }
+    }
+  }
+
+  // Generate Transport Owner Bill
+  function generateTransportBill(){
+    if(currentRole !== 'transport'){
+      alert(currentLang==='mr' ? 'परवानगी नाही' : 'Permission denied');
+      return;
+    }
+    const tractorNum = document.getElementById('transportTractorSelect').value;
+    const farmerName = document.getElementById('transportFarmerName').value.trim();
+    const sugarcaneWeight = parseFloat(document.getElementById('transportSugarcaneWeight').value);
+    const distance = parseFloat(document.getElementById('transportDistance').value);
+    const diesel = parseFloat(document.getElementById('transportDiesel').value);
+    const msg = document.getElementById('transportMsg');
+    msg.textContent = ''; msg.className = 'message';
+
+    if(!tractorNum){
+      msg.textContent = currentLang==='mr' ? 'कृपया ट्रॅक्टर निवडा' : 'Please select tractor';
+      msg.classList.add('error');
+      return;
+    }
+    if(!farmerName){
+      msg.textContent = currentLang==='mr' ? 'कृपया शेतकरी नाव द्या' : 'Enter farmer name';
+      msg.classList.add('error');
+      return;
+    }
+    if(!tractorRegistry.find(t=> t.tractorNumber === tractorNum)){
+      msg.textContent = currentLang==='mr' ? 'ट्रॅक्टर नोंदणीकृत नाही' : 'Tractor not registered';
+      msg.classList.add('error');
+      return;
+    }
+    if(!farmerRegistry.find(f=> f.name.toLowerCase() === farmerName.toLowerCase())){
+      msg.textContent = currentLang==='mr' ? 'शेतकरी नोंदणीकृत नाही' : 'Farmer not registered';
+      msg.classList.add('error');
+      return;
+    }
+    if(isNaN(sugarcaneWeight) || sugarcaneWeight <= 0){
+      msg.textContent = currentLang==='mr' ? 'वैध ऊस वजन प्रविष्ट करा' : 'Enter valid sugarcane weight';
+      msg.classList.add('error');
+      return;
+    }
+    if(isNaN(distance) || distance<0){
+      msg.textContent = currentLang==='mr' ? 'वैध अंतर प्रविष्ट करा' : 'Enter valid distance';
+      msg.classList.add('error');
+      return;
+    }
+    if(isNaN(diesel) || diesel<0){
+      msg.textContent = currentLang==='mr' ? 'वैध डिझेल प्रमाण द्या' : 'Enter valid diesel amount';
+      msg.classList.add('error');
+      return;
+    }
+
+    transportHistory.push({
+      tractorNumber: tractorNum,
+      farmerName: farmerName,
+      weight: sugarcaneWeight,
+      distance: distance,
+      diesel: diesel,
+      date: new Date().toLocaleDateString()
+    });
+
+    msg.textContent = currentLang==='mr' ? `ट्रान्सपोर्ट बिल तयार झाला: ट्रॅक्टर ${tractorNum}` : `Transport bill generated for tractor ${tractorNum}`;
+    msg.classList.add('success');
+
+    document.getElementById('transportFarmerName').value = '';
+    document.getElementById('transportSugarcaneWeight').value = '';
+    document.getElementById('transportDistance').value = '';
+    document.getElementById('transportDiesel').value = '';
+
+    saveAll();
+    renderTransportHistoryTable();
+    updateDashboard();
+    populateTransportDropdown();
+  }
+
+  // Generate Farmer Bill
+  function generateFarmerBill(){
+    if(currentRole !== 'transport'){
+      alert(currentLang==='mr' ? 'परवानगी नाही' : 'Permission denied');
+      return;
+    }
+    const farmerName = document.getElementById('transportFarmerName').value.trim();
+    const sugarcaneWeight = parseFloat(document.getElementById('transportSugarcaneWeight').value);
+    const msg = document.getElementById('transportMsg');
+    msg.textContent = ''; msg.className = 'message';
+
+    if(!farmerName){
+      msg.textContent = currentLang==='mr' ? 'कृपया शेतकरी नाव द्या' : 'Enter farmer name';
+      msg.classList.add('error');
+      return;
+    }
+    if(!farmerRegistry.find(f=>f.name.toLowerCase() === farmerName.toLowerCase())){
+      msg.textContent = currentLang==='mr' ? 'शेतकरी नोंदणीकृत नाही' : 'Farmer not registered';
+      msg.classList.add('error');
+      return;
+    }
+    if(isNaN(sugarcaneWeight) || sugarcaneWeight <= 0){
+      msg.textContent = currentLang==='mr' ? 'वैध ऊस वजन प्रविष्ट करा' : 'Enter valid sugarcane weight';
+      msg.classList.add('error');
+      return;
+    }
+
+    farmerSalesBook.push({
+      farmerName: farmerName,
+      sugarcaneWeight: sugarcaneWeight,
+      date: new Date().toLocaleDateString()
+    });
+
+    msg.textContent = currentLang==='mr' ? `शेतकरी बिल तयार झाला: ${farmerName} ने ${sugarcaneWeight} टन ऊस विक्री केला` : `Farmer bill recorded: ${farmerName} sold ${sugarcaneWeight} tons`;
+    msg.classList.add('success');
+
+    // Clear inputs but keep tractor data for convenience
+    document.getElementById('transportFarmerName').value = '';
+    document.getElementById('transportSugarcaneWeight').value = '';
+
+    saveAll();
+    renderFarmerSalesTable();
+    updateDashboard();
+  }
+
+  // Print any table by Id
+  function printSection(tableId){
+    const table = document.getElementById(tableId);
+    if(!table) return alert('Table not found');
+    const style = `<style>table {width: 100%; border-collapse: collapse;} th, td {border:1px solid #000; padding:5px;}</style>`;
+    const newWin = window.open('', '', 'width=900,height=600');
+    newWin.document.write('<html><head><title>Print</title>'+style+'</head><body>');
+    newWin.document.write(table.outerHTML);
+    newWin.document.write('</body></html>');
+    newWin.document.close();
+    newWin.focus();
+    newWin.print();
+  }
+
+  // Farmer Section: show only that farmer's sales & tractor parking
+  function showFarmerData(){
+    document.getElementById('farmerLoginName').innerText = loginUser;
+
+    // Filter farmerSalesBook
+    const farmerSalesTbody = document.querySelector('#farmerOwnSalesTable tbody');
+    farmerSalesTbody.innerHTML = '';
+    farmerSalesBook.filter(s => s.farmerName.toLowerCase() === loginUser.toLowerCase()).forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${s.sugarcaneWeight}</td><td>${s.date}</td>`;
+      farmerSalesTbody.appendChild(tr);
+    });
+
+    // Find tractors owned by farmer & their parking status
+    const farmerTractorsNumbers = tractorRegistry.filter(t => t.owner.toLowerCase() === loginUser.toLowerCase()).map(t => t.tractorNumber);
+
+    const parkingTbody = document.querySelector('#farmerTractorParkingTable tbody');
+    parkingTbody.innerHTML = '';
+    inOutBook.filter(e => farmerTractorsNumbers.includes(e.tractorNumber)).forEach(e => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${e.tractorNumber}</td><td>${e.slot}</td><td>${e.inTime}</td><td>${e.outTime || '-'}</td>`;
+      parkingTbody.appendChild(tr);
+    });
+  }
+
+  // Tractor Owner Section: show owned tractors parking info
+  function showTractorOwnerData(){
+    document.getElementById('tractorOwnerLoginName').innerText = loginUser;
+
+    // Find tractors owned by tractor owner
+    const ownTractorNos = tractorRegistry.filter(t=> t.owner.toLowerCase() === loginUser.toLowerCase()).map(t => t.tractorNumber);
+    const tbody = document.querySelector('#ownerTractorParkingTable tbody');
+    tbody.innerHTML = '';
+    inOutBook.filter(e => ownTractorNos.includes(e.tractorNumber)).forEach(e => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${e.tractorNumber}</td><td>${e.slot}</td><td>${e.inTime}</td><td>${e.outTime || '-'}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Render InOut book for chairman
+  function renderInOutBookTable(){
+    const tbody = document.querySelector('#inOutBookTable tbody');
+    tbody.innerHTML = '';
+    inOutBook.forEach(e => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${e.tractorNumber}</td><td>${e.slot}</td><td>${e.inTime}</td><td>${e.outTime || '-'}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Render Farmer sales book for chairman
+  function renderFarmerSalesTable(){
+    const tbody = document.querySelector('#farmerSalesTable tbody');
+    tbody.innerHTML = '';
+    farmerSalesBook.forEach(f => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${f.farmerName}</td><td>${f.sugarcaneWeight}</td><td>${f.date}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Render tractor table for chairman
+  function renderTractorTable(){
+    const tbody = document.querySelector('#tractorTable tbody');
+    tbody.innerHTML = '';
+    tractorRegistry.forEach((t, index) => {
+      let tr = document.createElement('tr');
+      tr.innerHTML = `<td>${t.owner}</td><td>${t.tractorNumber}</td><td>${t.weight}</td><td>${t.model}</td>
+      <td><button onclick="editTractor(${index})" data-lang="edit">Edit</button></td>
+      <td><button class="btn-danger" onclick="deleteTractor(${index})" data-lang="delete">Delete</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Render farmer table for chairman
+  function renderFarmerTable(){
+    const tbody = document.querySelector('#farmerTable tbody');
+    tbody.innerHTML = '';
+    farmerRegistry.forEach((f,index) => {
+      let tr = document.createElement('tr');
+      tr.innerHTML = `<td>${f.name}</td><td>${f.aadhar}</td><td>${f.mobile}</td>
+      <td><button onclick="editFarmer(${index})" data-lang="edit">Edit</button></td>
+      <td><button class="btn-danger" onclick="deleteFarmer(${index})" data-lang="delete">Delete</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Render transport history for transport user
+  function renderTransportHistoryTable(){
+    const tbody = document.querySelector('#transportHistoryTable tbody');
+    tbody.innerHTML = '';
+    transportHistory.forEach((h, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${h.tractorNumber}</td><td>${h.farmerName}</td><td>${h.weight}</td><td>${h.distance}</td><td>${h.diesel}</td><td>${h.date}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Populate dropdown for transport tractor select
+  function populateTransportDropdown(){
+    const select = document.getElementById('transportTractorSelect');
+    select.innerHTML = '<option value="">Select Tractor</option>';
+    for(const tn in parkedTractors){
+      if(!parkedTractors[tn].timeOut){
+        const option = document.createElement('option');
+        option.value = tn;
+        option.text = tn;
+        select.appendChild(option);
+      }
+    }
+  }
+
+  // Initialize app after login
+  function initApp(){
+    updateDashboard();
+    renderParkingGrid();
+    renderTractorTable();
+    renderFarmerTable();
+    renderInOutBookTable();
+    renderFarmerSalesTable();
+    renderTransportHistoryTable();
+    populateTransportDropdown();
+    translatePage();
+  }
+
+  // Print function
+  function printSection(tableId){
+    const tbl = document.getElementById(tableId);
+    if(!tbl){
+      alert(currentLang==='mr' ? "तालिका सापडली नाही" : "Table not found");
+      return;
+    }
+    const style = `<style>table {width:100%; border-collapse: collapse;} th, td {border:1px solid #000; padding:5px;}</style>`;
+    const newWin = window.open('','_blank','width=900,height=600');
+    newWin.document.write('<html><head><title>Print</title>'+style+'</head><body>');
+    newWin.document.write(tbl.outerHTML);
+    newWin.document.write('</body></html>');
+    newWin.document.close();
+    newWin.focus();
+    newWin.print();
+  }
+
+  // Initialize login UI placeholders & language
+  updateLoginPlaceholders();
+  translatePage();
+</script>
+
+</body>
+</html>
+
