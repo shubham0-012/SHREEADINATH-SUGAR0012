@@ -14,6 +14,10 @@
   button:hover { background-color: #135ca6; }
   .btn-danger { background-color:#dc3545; }
   .btn-danger:hover { background-color:#a52330; }
+  .btn-success { background-color: #198754; }
+  .btn-success:hover { background-color: #136f44; }
+  .btn-warning { background-color: #ffc107; color: #333; }
+  .btn-warning:hover { background-color: #d19f07; }
   .hidden { display: none !important; }
   .message { font-weight: 600; margin: 8px 0; }
   .error { color: #dc3545; }
@@ -29,6 +33,9 @@
   #logoutBtn { float: right; margin: 10px 0; }
   #liveClock { font-weight: 600; }
   .lang-toggle { float: right; margin: 10px 5px; background: #444; color: white; padding: 5px 10px; cursor: pointer; border-radius: 4px;}
+  .paid-bank { color: #198754; font-weight: bold; }
+  .paid-cash { color: #ffc107; font-weight: bold; }
+  .unpaid { color: #dc3545; font-weight: bold; }
   @media(max-width: 600px) {
     .grid { grid-template-columns: repeat(5,1fr); }
     input, select, button { width: 100%; box-sizing: border-box; margin: 5px 0; }
@@ -46,6 +53,7 @@
     <select id="loginRole" onchange="updateLoginPlaceholders()">
       <option value="gateman">Gateman (गेटमॅन)</option>
       <option value="chairman">Chairman (चेअरमन)</option>
+      <option value="billing">Billing (बिलिंग)</option>
       <option value="transport">Transport (वाहतूकदार)</option>
       <option value="farmer">Farmer (शेतकरी)</option>
       <option value="tractorOwner">Tractor Owner (ट्रॅक्टर मालक)</option>
@@ -61,8 +69,9 @@
 
     <p style="font-size:12px; color:#555;">
       उपलब्ध वापरकर्ते: <br/>
-      G (Gateman), C (Chairman), T (Transport), F (Farmer), O (Tractor Owner) <br/>
-      सर्व पासवर्ड: 0012
+      G (Gateman), C (Chairman), B (Billing), T (Transport) <br/>
+      Farmer साठी - आधार नंबर (123456789012) आणि पास: 0012 <br/>
+      Tractor Owner साठी - ट्रॅक्टर नंबर (MH12AB1234) आणि पास: 0012 <br/>
     </p>
 
     <div class="lang-toggle" onclick="toggleLang()">मराठी / English</div>
@@ -79,13 +88,11 @@
 
     <div id="dashboardReport" style="font-weight:bold; margin-bottom:20px;"></div>
 
-    <!-- PARKING GRID -->
     <div>
       <b data-lang="parkingTitle">🚜 पार्किंग स्लॉट आणि सध्या पार्क झालेले ट्रॅक्टर्स</b>
       <div class="grid" id="parkingGrid"></div>
     </div>
 
-    <!-- GATEMAN -->
     <section id="gatemanSection" class="hidden" style="margin-top:20px;">
       <h3 data-lang="gatemanTitle">गेटमॅन: ट्रॅक्टर इन/आउट आणि पार्किंग</h3>
       <input id="gatemanTractorNo" placeholder="Tractor Number (उदा. MH01AB1234)" />
@@ -95,13 +102,22 @@
       <p id="gatemanMsg" class="message"></p>
     </section>
 
-    <!-- CHAIRMAN -->
     <section id="chairmanSection" class="hidden" style="margin-top:20px;">
       <h3 data-lang="chairmanTitle">चेअरमन: ट्रॅक्टर व शेतकरी नोंदणी आणि व्यवस्थापन</h3>
 
-      <!-- Tractor registration -->
+      <div style="border:1px solid #ddd; background:#fff; padding:10px; border-radius:6px; margin-bottom:10px;">
+        <h4 data-lang="rateTitle">रेट व्यवस्थापन 💰</h4>
+        <label for="sugarcaneRate" data-lang="sugarcaneRateLabel">ऊस दर (प्रती टन): </label>
+        <input id="sugarcaneRate" type="number" value="2500" /><br/>
+        <label for="transportRate" data-lang="transportRateLabel">ट्रान्सपोर्ट दर (प्रती किमी): </label>
+        <input id="transportRate" type="number" value="5" /><br/>
+        <button onclick="saveRates()" data-lang="saveRatesBtn">सेव्ह रेट्स</button>
+        <p id="rateMsg" class="message"></p>
+      </div>
+
       <div style="border:1px solid #ddd; background:#fff; padding:10px; border-radius:6px; margin-bottom:10px;">
         <h4 data-lang="tractorRegistration">🚜 ट्रॅक्टर नोंदणी / संपादन</h4>
+        <input id="chairmanTractorSearch" type="text" placeholder="Search Tractor Number..." onkeyup="filterTractors()"><br>
         <input id="chairmanOwner" placeholder="Owner Name" />
         <input id="chairmanTractorNo" placeholder="Tractor Number" />
         <input id="chairmanWeight" type="number" placeholder="Weight (kg)" />
@@ -113,9 +129,9 @@
         <table id="tractorTable"><thead><tr><th data-lang="owner">Owner</th><th data-lang="number">Number</th><th data-lang="weight">Weight</th><th data-lang="model">Model</th><th data-lang="edit">Edit</th><th data-lang="delete">Delete</th></tr></thead><tbody></tbody></table>
       </div>
 
-      <!-- Farmer registration -->
       <div style="border:1px solid #ddd; background:#fff; padding:10px; border-radius:6px; margin-bottom:10px;">
         <h4 data-lang="farmerRegistration">👨‍🌾 शेतकरी नोंदणी / संपादन</h4>
+        <input id="chairmanFarmerSearch" type="text" placeholder="Search Farmer Name..." onkeyup="filterFarmers()"><br>
         <input id="chairmanFarmerName" placeholder="Farmer Name" />
         <input id="chairmanFarmerAadhar" placeholder="Aadhar Number" />
         <input id="chairmanShetiGatNo" placeholder="Sheti Gat Number" />
@@ -130,7 +146,6 @@
         <table id="farmerTable"><thead><tr><th data-lang="name">Name</th><th>Aadhar</th><th data-lang="mobile">Mobile</th><th data-lang="edit">Edit</th><th data-lang="delete">Delete</th></tr></thead><tbody></tbody></table>
       </div>
 
-      <!-- Additional reports only for chairman -->
       <div>
         <h4 data-lang="inOutBook">📝 ट्रॅक्टर इनआउट बुक</h4>
         <div style="max-height: 160px; overflow-y:auto;">
@@ -149,7 +164,6 @@
 
     </section>
 
-    <!-- TRANSPORT -->
     <section id="transportSection" class="hidden" style="margin-top:20px;">
       <h3 data-lang="transportTitle">🚚 वाहतूकदार विभाग : शेतकरी आणि ट्रान्सपोर्टरचे बिल</h3>
 
@@ -174,20 +188,59 @@
       </div>
 
       <div style="margin-top:10px;">
-        <button onclick="printSection('transportHistoryTable')" data-lang="printTransportBtn">Print Transport History</button>
-        <button onclick="printSection('farmerSalesTable')" data-lang="printFarmerSalesBtn">Print Farmer Sales Bill</button>
+        <button onclick="printBill('transport')" data-lang="printTransportBtn">Print Transport Bill</button>
+        <button onclick="printBill('farmer')" data-lang="printFarmerSalesBtn">Print Farmer Bill</button>
+      </div>
+
+    </section>
+   
+    <section id="billingSection" class="hidden" style="margin-top:20px;">
+      <h3 data-lang="billingTitle">💰 बिलिंग विभाग - शेतकरी आणि ट्रान्सपोर्ट बिल व्यवस्थापन</h3>
+     
+      <div style="border:1px solid #ddd; background:#fff; padding:10px; border-radius:6px; margin-bottom:10px;">
+        <h4 data-lang="farmerBills">👨‍🌾 शेतकरी बिल</h4>
+        <div style="max-height: 250px; overflow-y:auto;">
+          <table id="billingFarmerTable">
+            <thead>
+              <tr>
+                <th>नाव</th>
+                <th>वजन (टन)</th>
+                <th>एकूण रक्कम</th>
+                <th>स्थिती</th>
+                <th>क्रिया</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+     
+      <div style="border:1px solid #ddd; background:#fff; padding:10px; border-radius:6px; margin-bottom:10px;">
+        <h4 data-lang="tractorBills">🚜 ट्रॅक्टर मालकाचे बिल</h4>
+        <div style="max-height: 250px; overflow-y:auto;">
+          <table id="billingTractorTable">
+            <thead>
+              <tr>
+                <th>ट्रॅक्टर नंबर</th>
+                <th>एकूण रक्कम</th>
+                <th>स्थिती</th>
+                <th>क्रिया</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
 
     </section>
 
-    <!-- FARMER VIEW -->
     <section id="farmerSection" class="hidden" style="margin-top:20px;">
       <h3 data-lang="farmerTitle">शेतकरी - आपले विक्री विवरण आणि पार्किंग माहिती</h3>
       <p><b data-lang="welcomeFarmer">Welcome</b>, <span id="farmerLoginName"></span></p>
 
       <h4 data-lang="yourSales">आपल्या विक्रीची यादी (Sugarcane Sales)</h4>
       <table id="farmerOwnSalesTable" border="1" style="width:100%; border-collapse: collapse;">
-        <thead><tr><th>Weight (tons)</th><th>Date</th></tr></thead><tbody></tbody>
+        <thead><tr><th>Weight (tons)</th><th>Bill Amount</th><th>Status</th><th>Date</th></tr></thead><tbody></tbody>
       </table>
 
       <h4 data-lang="yourSlots" style="margin-top:15px;">आपली ट्रॅक्टर पार्किंग माहिती</h4>
@@ -196,14 +249,13 @@
       </table>
     </section>
 
-    <!-- TRACTOR OWNER VIEW -->
     <section id="tractorOwnerSection" class="hidden" style="margin-top:20px;">
       <h3 data-lang="tractorOwnerTitle">ट्रॅक्टर मालक - आपली ट्रॅक्टर पार्किंग व परिचालन माहिती</h3>
       <p><b data-lang="welcomeOwner">Welcome</b>, <span id="tractorOwnerLoginName"></span></p>
 
       <h4 data-lang="yourTractors">आपले ट्रॅक्टर्स आणि त्यांची पार्किंग माहिती</h4>
       <table id="ownerTractorParkingTable" border="1" style="width:100%; border-collapse: collapse;">
-        <thead><tr><th>Number</th><th>Slot</th><th>In Time</th><th>Out Time</th></tr></thead><tbody></tbody>
+        <thead><tr><th>Number</th><th>Owner Bill</th><th>Status</th><th>In Time</th><th>Out Time</th></tr></thead><tbody></tbody>
       </table>
     </section>
 
@@ -213,12 +265,19 @@
 
 <script>
   // Data storage
-  let tractorRegistry = JSON.parse(localStorage.getItem("tractorRegistry")) || [];
-  let farmerRegistry = JSON.parse(localStorage.getItem("farmerRegistry")) || [];
+  let tractorRegistry = JSON.parse(localStorage.getItem("tractorRegistry")) || [
+      {owner: 'Ajit Patil', tractorNumber: 'MH12AB1234', weight: '1500', model: 'Swaraj'},
+      {owner: 'Sandeep Mali', tractorNumber: 'MH13CD5678', weight: '1600', model: 'Eicher'}
+  ];
+  let farmerRegistry = JSON.parse(localStorage.getItem("farmerRegistry")) || [
+      {name: 'Ramrao Yadav', aadhar: '123456789012', shetiGatNo: '55', mobile: '9876543210', accountNo: '12345', bankName: 'SBI', ifsc: 'SBIN0001'},
+      {name: 'Shamrao Kadam', aadhar: '112233445566', shetiGatNo: '77', mobile: '8765432109', accountNo: '67890', bankName: 'BOI', ifsc: 'BOI0002'}
+  ];
   let parkedTractors = JSON.parse(localStorage.getItem("parkedTractors")) || {};
   let inOutBook = JSON.parse(localStorage.getItem("inOutBook")) || [];
   let farmerSalesBook = JSON.parse(localStorage.getItem("farmerSalesBook")) || [];
   let transportHistory = JSON.parse(localStorage.getItem("transportHistory")) || [];
+  let rates = JSON.parse(localStorage.getItem("rates")) || { sugarcane: 2500, transport: 5 };
 
   let currentRole = "";
   let loginUser = "";
@@ -231,13 +290,17 @@
       selectRoleLabel: "रोल निवडा:",
       showPassword: "पासवर्ड दाखवा",
       loginButton: "लॉगिन",
-      logoutText: "युझर स्विच करा व बाहेर/paper ciknva",
+      logoutText: "युझर स्विच करा व बाहेर पडा",
       dashboardTitle: "डॅशबोर्ड - शरि आदिनाथ साखर कारखाना",
       parkingTitle: "🚜 पार्किंग स्लॉट आणि सध्या पार्क झालेले ट्रॅक्टर्स",
       gatemanTitle: "गेटमॅन: ट्रॅक्टर इन/आउट आणि पार्किंग",
       tractorInBtn: "ट्रॅक्टर इन",
       tractorOutBtn: "ट्रॅक्टर आउट",
       chairmanTitle: "चेअरमन: ट्रॅक्टर व शेतकरी नोंदणी आणि व्यवस्थापन",
+      rateTitle: "रेट व्यवस्थापन 💰",
+      sugarcaneRateLabel: "ऊस दर (प्रती टन):",
+      transportRateLabel: "ट्रान्सपोर्ट दर (प्रती किमी):",
+      saveRatesBtn: "सेव्ह रेट्स",
       tractorRegistration: "🚜 ट्रॅक्टर नोंदणी / संपादन",
       saveTractorBtn: "ट्रॅक्टर नोंदवा",
       registeredTractors: "नोंदणीकृत ट्रॅक्टर्स",
@@ -258,15 +321,28 @@
       genTransportBillBtn: "ट्रान्सपोर्ट मालक बिल तयार करा",
       genFarmerBillBtn: "शेतकरी बिल तयार करा",
       transportHistoryTitle: "📋 ट्रान्सपोर्ट इतिहास",
-      printTransportBtn: "प्रिंट ट्रान्सपोर्ट इतिहास",
-      printFarmerSalesBtn: "प्रिंट शेतकरी विक्री बिल",
+      printTransportBtn: "ट्रान्सपोर्ट बिल प्रिंट करा",
+      printFarmerSalesBtn: "शेतकरी बिल प्रिंट करा",
+      billingTitle: "💰 बिलिंग विभाग - शेतकरी आणि ट्रान्सपोर्ट बिल व्यवस्थापन",
+      farmerBills: "👨‍🌾 शेतकरी बिल",
+      tractorBills: "🚜 ट्रॅक्टर मालकाचे बिल",
       farmerTitle: "शेतकरी - आपले विक्री विवरण आणि पार्किंग माहिती",
       welcomeFarmer: "आपले स्वागत आहे",
       yourSales: "आपल्या विक्रीची यादी (Sugarcane Sales)",
       yourSlots: "आपली ट्रॅक्टर पार्किंग माहिती",
       tractorOwnerTitle: "ट्रॅक्टर मालक - आपली ट्रॅक्टर पार्किंग व परिचालन माहिती",
       welcomeOwner: "आपले स्वागत आहे",
-      yourTractors: "आपले ट्रॅक्टर्स आणि त्यांची पार्किंग माहिती"
+      yourTractors: "आपले ट्रॅक्टर्स आणि त्यांची पार्किंग माहिती",
+      paidBank: "बँकेतून पैसे दिले",
+      paidCash: "कॅश दिले",
+      paidStatus: "भरले",
+      cashStatus: "कॅश दिले",
+      unpaidStatus: "देय",
+      markAsPaid: "भरले",
+      markAsCash: "कॅश दिले",
+      totalPaid: "एकूण भरलेले",
+      totalUnpaid: "एकूण देय",
+      bill: "बिल"
     },
     en: {
       loginTitle: "🔐 Login - Shree Adinath Sugar Factory",
@@ -280,6 +356,10 @@
       tractorInBtn: "Tractor In",
       tractorOutBtn: "Tractor Out",
       chairmanTitle: "Chairman: Tractor and Farmer Registration & Management",
+      rateTitle: "Rate Management 💰",
+      sugarcaneRateLabel: "Sugarcane Rate (per ton):",
+      transportRateLabel: "Transport Rate (per km):",
+      saveRatesBtn: "Save Rates",
       tractorRegistration: "🚜 Tractor Registration / Edit",
       saveTractorBtn: "Save Tractor",
       registeredTractors: "Registered Tractors",
@@ -300,15 +380,28 @@
       genTransportBillBtn: "Generate Transport Owner Bill",
       genFarmerBillBtn: "Generate Farmer Bill",
       transportHistoryTitle: "📋 Transport History",
-      printTransportBtn: "Print Transport History",
-      printFarmerSalesBtn: "Print Farmer Sales Bill",
+      printTransportBtn: "Print Transport Bill",
+      printFarmerSalesBtn: "Print Farmer Bill",
+      billingTitle: "💰 Billing Section - Farmer & Transport Bill Management",
+      farmerBills: "👨‍🌾 Farmer Bills",
+      tractorBills: "🚜 Tractor Owner Bills",
       farmerTitle: "Farmer - Your Sales and Parking Info",
       welcomeFarmer: "Welcome",
       yourSales: "Your Sales List (Sugarcane Sales)",
       yourSlots: "Your Tractor Parking Info",
       tractorOwnerTitle: "Tractor Owner - Your Tractor Parking and Operations",
       welcomeOwner: "Welcome",
-      yourTractors: "Your Tractors and Their Parking Info"
+      yourTractors: "Your Tractors and Their Parking Info",
+      paidBank: "Paid via Bank",
+      paidCash: "Paid via Cash",
+      paidStatus: "Paid",
+      cashStatus: "Cash",
+      unpaidStatus: "Unpaid",
+      markAsPaid: "Mark as Paid",
+      markAsCash: "Mark as Cash",
+      totalPaid: "Total Paid",
+      totalUnpaid: "Total Unpaid",
+      bill: "Bill"
     }
   };
 
@@ -319,7 +412,6 @@
         el.innerText = languageStrings[currentLang][key];
       }
     });
-    // Update placeholders separately
     updateLoginPlaceholders();
   }
 
@@ -335,16 +427,18 @@
     if(currentLang === 'mr') {
       if(role==='gateman') userInput.placeholder = "वापरकर्ता नाव (उदा. G)";
       else if(role==='chairman') userInput.placeholder = "वापरकर्ता नाव (उदा. C)";
+      else if(role==='billing') userInput.placeholder = "वापरकर्ता नाव (उदा. B)";
       else if(role==='transport') userInput.placeholder = "वापरकर्ता नाव (उदा. T)";
-      else if(role==='farmer') userInput.placeholder = "शेतकरी ID (उदा. F001)";
-      else if(role==='tractorOwner') userInput.placeholder = "ट्रॅक्टर मालक ID (उदा. O001)";
+      else if(role==='farmer') userInput.placeholder = "आधार नंबर (उदा. 123456789012)";
+      else if(role==='tractorOwner') userInput.placeholder = "ट्रॅक्टर नंबर (उदा. MH12AB1234)";
       passInput.placeholder = "पासवर्ड";
     } else {
       if(role==='gateman') userInput.placeholder = "Username (e.g. G)";
       else if(role==='chairman') userInput.placeholder = "Username (e.g. C)";
+      else if(role==='billing') userInput.placeholder = "Username (e.g. B)";
       else if(role==='transport') userInput.placeholder = "Username (e.g. T)";
-      else if(role==='farmer') userInput.placeholder = "Farmer ID (e.g. F001)";
-      else if(role==='tractorOwner') userInput.placeholder = "Tractor Owner ID (e.g. O001)";
+      else if(role==='farmer') userInput.placeholder = "Aadhar Number (e.g. 123456789012)";
+      else if(role==='tractorOwner') userInput.placeholder = "Tractor Number (e.g. MH12AB1234)";
       passInput.placeholder = "Password";
     }
   }
@@ -354,17 +448,15 @@
     passInput.type = document.getElementById('showPass').checked ? 'text' : 'password';
   });
 
-  // Hardcoded users for demo (can be extended or saved in localStorage)
-  const users = [
+  const fixedUsers = [
     { id: 'G', role: 'gateman', password: '0012' },
     { id: 'C', role: 'chairman', password: '0012' },
+    { id: 'B', role: 'billing', password: '0012' },
     { id: 'T', role: 'transport', password: '0012' },
-    { id: 'F001', role: 'farmer', password: '0012' },
-    { id: 'O001', role: 'tractorOwner', password: '0012' }
   ];
 
   function login() {
-    const inputUser = document.getElementById('loginUser').value.trim();
+    const inputUser = document.getElementById('loginUser').value.trim().toUpperCase();
     const inputPass = document.getElementById('loginPass').value.trim();
     const selectedRole = document.getElementById('loginRole').value;
     const msg = document.getElementById('loginMessage');
@@ -376,14 +468,28 @@
       return;
     }
 
-    let userObj = users.find(u => u.id.toLowerCase() === inputUser.toLowerCase() && u.password === inputPass && u.role === selectedRole);
+    let userObj = null;
+
+    if (selectedRole === 'farmer') {
+      const farmer = farmerRegistry.find(f => f.aadhar === inputUser);
+      if (farmer && inputPass === '0012') {
+        userObj = { id: farmer.aadhar, role: 'farmer' };
+      }
+    } else if (selectedRole === 'tractorOwner') {
+      const tractor = tractorRegistry.find(t => t.tractorNumber === inputUser);
+      if (tractor && inputPass === '0012') {
+        userObj = { id: tractor.tractorNumber, role: 'tractorOwner' };
+      }
+    } else {
+      userObj = fixedUsers.find(u => u.id.toUpperCase() === inputUser && u.password === inputPass && u.role === selectedRole);
+    }
+
     if(!userObj) {
       msg.textContent = currentLang==='mr' ? "अवैध क्रेडेन्शियल्स." : "Invalid credentials.";
       msg.classList.add("error");
       return;
     }
 
-    // Login success
     currentRole = userObj.role;
     loginUser = userObj.id;
     msg.textContent = '';
@@ -396,13 +502,11 @@
   function logout() {
     currentRole = "";
     loginUser = "";
-    // Clear UI & reset
     document.getElementById('loginBox').classList.remove('hidden');
     document.getElementById('mainApp').classList.add('hidden');
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
     document.getElementById('loginMessage').textContent = '';
-    // Hide all role sections
     document.querySelectorAll('section').forEach(sec => sec.classList.add('hidden'));
   }
 
@@ -410,12 +514,14 @@
     document.getElementById('gatemanSection').classList.add('hidden');
     document.getElementById('chairmanSection').classList.add('hidden');
     document.getElementById('transportSection').classList.add('hidden');
+    document.getElementById('billingSection').classList.add('hidden');
     document.getElementById('farmerSection').classList.add('hidden');
     document.getElementById('tractorOwnerSection').classList.add('hidden');
 
     if(currentRole === 'gateman') document.getElementById('gatemanSection').classList.remove('hidden');
     else if(currentRole === 'chairman') document.getElementById('chairmanSection').classList.remove('hidden');
     else if(currentRole === 'transport') document.getElementById('transportSection').classList.remove('hidden');
+    else if(currentRole === 'billing') document.getElementById('billingSection').classList.remove('hidden');
     else if(currentRole === 'farmer') {
       document.getElementById('farmerSection').classList.remove('hidden');
       showFarmerData();
@@ -426,7 +532,6 @@
     }
   }
 
-  // Update Live Clock & Dashboard Reports
   function updateClock() {
     const now = new Date();
     document.getElementById('liveClock').textContent = now.toLocaleTimeString(currentLang==='mr' ? 'mr-IN' : 'en-US');
@@ -434,7 +539,6 @@
   setInterval(updateClock, 1000);
   updateClock();
 
-  // Save all data to localStorage
   function saveAll() {
     localStorage.setItem('tractorRegistry', JSON.stringify(tractorRegistry));
     localStorage.setItem('farmerRegistry', JSON.stringify(farmerRegistry));
@@ -442,9 +546,9 @@
     localStorage.setItem('inOutBook', JSON.stringify(inOutBook));
     localStorage.setItem('farmerSalesBook', JSON.stringify(farmerSalesBook));
     localStorage.setItem('transportHistory', JSON.stringify(transportHistory));
+    localStorage.setItem('rates', JSON.stringify(rates));
   }
 
-  // Initialization after login
   function initApp() {
     updateDashboard();
     renderParkingGrid();
@@ -453,39 +557,43 @@
     renderInOutBookTable();
     renderFarmerSalesTable();
     renderTransportHistoryTable();
+    renderBillingTables();
     populateTransportDropdown();
+   
+    if (currentRole === 'chairman') {
+      document.getElementById('sugarcaneRate').value = rates.sugarcane;
+      document.getElementById('transportRate').value = rates.transport;
+    }
   }
 
-  // Dashboard summary for all roles
   function updateDashboard() {
-    if(currentRole === 'farmer') {
+    if(currentRole === 'farmer' || currentRole === 'tractorOwner') {
       document.getElementById('dashboardReport').textContent = '';
       return;
     }
-    if(currentRole === 'tractorOwner') {
-      document.getElementById('dashboardReport').textContent = '';
-      return;
-    }
-    // For others show stats
+   
     const parkedCount = Object.values(parkedTractors).filter(t => !t.timeOut).length;
     const today = new Date().toLocaleDateString();
     const inOutToday = inOutBook.filter(e=> e.inTime?.startsWith(today)).length;
     const sugarcaneToday = farmerSalesBook.filter(f=> f.date === today).reduce((a,b) => a + parseFloat(b.sugarcaneWeight || 0), 0);
+   
     let farmerTotals = {};
     for(const sale of farmerSalesBook){
       farmerTotals[sale.farmerName] = (farmerTotals[sale.farmerName]||0) + parseFloat(sale.sugarcaneWeight || 0);
     }
     const sortedFarmers = Object.entries(farmerTotals).sort((a,b)=> b[1] - a[1]).slice(0,5);
-    const topFarmersStr = sortedFarmers.length ? sortedFarmers.map(f=> `${f[0]} (${f[1]} टन)`).join(', ') : 'नाही';
+    const topFarmersStr = sortedFarmers.length ? sortedFarmers.map(f=> `${f[0]} (${f[1].toFixed(2)} टन)`).join(', ') : (currentLang==='mr' ? 'नाही' : 'None');
+
+    let totalUnpaidFarmer = farmerSalesBook.filter(b=> !b.isPaid).reduce((sum, b) => sum + (b.billAmount || 0), 0);
+    let totalUnpaidTransport = transportHistory.filter(b=> !b.isPaid).reduce((sum, b) => sum + (b.billAmount || 0), 0);
 
     const d = {
-      mr:`🚜 पार्क झालेले ट्रॅक्टर्स: ${parkedCount} | आजचे In/Out: ${inOutToday} | आजचा ऊस: ${sugarcaneToday.toFixed(2)} टन | टॉप ५ शेतकरी: ${topFarmersStr}`,
-      en:`🚜 Parked Tractors: ${parkedCount} | Today's In/Out: ${inOutToday} | Sugarcane Today: ${sugarcaneToday.toFixed(2)} tons | Top 5 Farmers: ${topFarmersStr}`
+      mr:`🚜 पार्क झालेले: ${parkedCount} | आजचा ऊस: ${sugarcaneToday.toFixed(2)} टन | देय शेतकरी: ₹${totalUnpaidFarmer.toFixed(2)} | देय ट्रान्सपोर्ट: ₹${totalUnpaidTransport.toFixed(2)}`,
+      en:`🚜 Parked: ${parkedCount} | Sugarcane Today: ${sugarcaneToday.toFixed(2)} tons | Unpaid Farmer Bills: ₹${totalUnpaidFarmer.toFixed(2)} | Unpaid Transport Bills: ₹${totalUnpaidTransport.toFixed(2)}`
     };
     document.getElementById('dashboardReport').textContent = d[currentLang];
   }
 
-  // Parking Grid Render
   function renderParkingGrid(){
     const grid = document.getElementById('parkingGrid');
     grid.innerHTML = '';
@@ -510,7 +618,6 @@
     }
   }
 
-  // --- Gateman controls ----
   function tractorIn() {
     if(currentRole !== 'gateman') { alert(currentLang==='mr' ? "परवानगी नाही" : "Permission denied"); return;}
     const tnum = document.getElementById('gatemanTractorNo').value.trim().toUpperCase();
@@ -579,121 +686,123 @@
     const nowStr = new Date().toLocaleString();
     parkedTractors[tnum].timeOut = nowStr;
     for(let i=inOutBook.length-1;i>=0;i--){
-      if(inOutBook[i].tractorNumber === tnum && !inOutBook[i].outTime){
+      if(inOutBook[i].tractorNumber === tnum && inOutBook[i].outTime === ""){
         inOutBook[i].outTime = nowStr;
         break;
       }
     }
     saveAll();
-    msgEl.textContent = currentLang==='mr' ? `ट्रॅक्टर ${tnum} पार्किंगमधून बाहेर निघाला` : `Tractor ${tnum} exited parking`;
+    msgEl.textContent = currentLang==='mr' ? `ट्रॅक्टर ${tnum} पार्किंगमधून बाहेर पडला` : `Tractor ${tnum} left the parking`;
     msgEl.classList.add('success');
     document.getElementById('gatemanTractorNo').value = '';
     initApp();
   }
 
-  // ----- Chairman Section -----
-  function renderTractorTable(){
-    const tbody = document.querySelector('#tractorTable tbody');
-    tbody.innerHTML = '';
-    tractorRegistry.forEach((tr, idx) => {
-      let trEl = document.createElement('tr');
-      trEl.innerHTML = `
-        <td>${tr.owner}</td>
-        <td>${tr.tractorNumber}</td>
-        <td>${tr.weight}</td>
-        <td>${tr.model}</td>
-        <td><button onclick="editTractor(${idx})" data-lang="edit">Edit</button></td>
-        <td><button class="btn-danger" onclick="deleteTractor(${idx})" data-lang="delete">Delete</button></td>
-      `;
-      tbody.appendChild(trEl);
+  // Chairman Functions
+  function renderTractorTable(filterText = '') {
+    const tableBody = document.querySelector('#tractorTable tbody');
+    tableBody.innerHTML = '';
+    const filteredTractors = tractorRegistry.filter(t => t.tractorNumber.includes(filterText.toUpperCase()));
+    filteredTractors.forEach((t, index) => {
+      const row = tableBody.insertRow();
+      row.insertCell(0).innerText = t.owner;
+      row.insertCell(1).innerText = t.tractorNumber;
+      row.insertCell(2).innerText = t.weight + ' kg';
+      row.insertCell(3).innerText = t.model;
+      const editCell = row.insertCell(4);
+      const deleteCell = row.insertCell(5);
+      editCell.innerHTML = `<button onclick="editTractor('${t.tractorNumber}')" class="btn-warning">Edit</button>`;
+      deleteCell.innerHTML = `<button onclick="deleteTractor('${t.tractorNumber}')" class="btn-danger">Delete</button>`;
     });
-    translatePage();
+  }
+
+  function filterTractors(){
+    const searchText = document.getElementById('chairmanTractorSearch').value;
+    renderTractorTable(searchText);
   }
 
   function saveTractor() {
     const owner = document.getElementById('chairmanOwner').value.trim();
-    const tractorNumber = document.getElementById('chairmanTractorNo').value.trim().toUpperCase();
+    const number = document.getElementById('chairmanTractorNo').value.trim().toUpperCase();
     const weight = document.getElementById('chairmanWeight').value.trim();
     const model = document.getElementById('chairmanModel').value.trim();
-    const msg = document.getElementById('tractorMsg');
-    msg.textContent = '';
-    msg.className = 'message';
-
-    if(!owner || !tractorNumber || !weight || !model){
-      msg.textContent = currentLang==='mr' ? 'सर्व फील्ड भरा' : "Fill all fields";
-      msg.classList.add('error');
+    const msgEl = document.getElementById('tractorMsg');
+    const editingIndex = document.getElementById('editingTractorIndex').value;
+    msgEl.textContent = '';
+   
+    if(!owner || !number || !weight || !model){
+      msgEl.textContent = currentLang==='mr' ? "सर्व माहिती भरा" : "Please fill all fields";
+      msgEl.classList.add('error');
       return;
     }
-
-    const editIndex = parseInt(document.getElementById('editingTractorIndex').value);
-    if(editIndex === -1){
-      if(tractorRegistry.find(t=>t.tractorNumber === tractorNumber)) {
-        msg.textContent = currentLang==='mr' ? 'ट्रॅक्टर नंबर आधीच नोंदणीकृत आहे' : "Tractor number already registered";
-        msg.classList.add('error');
+   
+    if(editingIndex != -1){
+      tractorRegistry[editingIndex] = {owner, tractorNumber: number, weight, model};
+      msgEl.textContent = currentLang==='mr' ? "ट्रॅक्टर माहिती अपडेट झाली" : "Tractor info updated";
+    } else {
+      const existing = tractorRegistry.find(t=> t.tractorNumber === number);
+      if(existing){
+        msgEl.textContent = currentLang==='mr' ? "हा ट्रॅक्टर नंबर आधीच नोंदणीकृत आहे" : "Tractor number already registered";
+        msgEl.classList.add('error');
         return;
       }
-      tractorRegistry.push({owner, tractorNumber, weight, model});
-      msg.textContent = currentLang==='mr' ? 'नवीन ट्रॅक्टर यशस्वीरित्या नोंदवला' : "New tractor registered successfully";
-      msg.classList.add('success');
-    } else {
-      // update
-      tractorRegistry[editIndex] = {owner, tractorNumber, weight, model};
-      msg.textContent = currentLang==='mr' ? 'ट्रॅक्टर माहिती अपडेट केली' : "Tractor info updated";
-      msg.classList.add('success');
-      document.getElementById('editingTractorIndex').value = -1;
+      tractorRegistry.push({owner, tractorNumber: number, weight, model});
+      msgEl.textContent = currentLang==='mr' ? "ट्रॅक्टर नोंदणी झाली" : "Tractor registered";
     }
-    clearTractorForm();
-    saveAll();
-    renderTractorTable();
-    initApp();
-  }
 
-  function editTractor(idx){
-    const tr = tractorRegistry[idx];
-    document.getElementById('chairmanOwner').value = tr.owner;
-    document.getElementById('chairmanTractorNo').value = tr.tractorNumber;
-    document.getElementById('chairmanWeight').value = tr.weight;
-    document.getElementById('chairmanModel').value = tr.model;
-    document.getElementById('editingTractorIndex').value = idx;
-    window.scrollTo({top: 0, behavior:'smooth'});
-  }
-
-  function deleteTractor(idx){
-    if(confirm(currentLang==='mr' ? 'तुम्हाला खात्री आहे का?' : 'Are you sure?')){
-      tractorRegistry.splice(idx,1);
-      saveAll();
-      renderTractorTable();
-      initApp();
-    }
-  }
-
-  function clearTractorForm(){
+    msgEl.classList.add('success');
     document.getElementById('chairmanOwner').value = '';
     document.getElementById('chairmanTractorNo').value = '';
     document.getElementById('chairmanWeight').value = '';
     document.getElementById('chairmanModel').value = '';
     document.getElementById('editingTractorIndex').value = -1;
+    saveAll();
+    renderTractorTable();
+    populateTransportDropdown();
   }
 
-  // --- Farmer section ---
-  function renderFarmerTable(){
-    const tbody = document.querySelector('#farmerTable tbody');
-    tbody.innerHTML = '';
-    farmerRegistry.forEach((f,i) =>{
-      let tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${f.name}</td>
-        <td>${f.aadhar}</td>
-        <td>${f.mobile}</td>
-        <td><button onclick="editFarmer(${i})" data-lang="edit">Edit</button></td>
-        <td><button class="btn-danger" onclick="deleteFarmer(${i})" data-lang="delete">Delete</button></td>
-      `;
-      tbody.appendChild(tr);
+  function editTractor(number) {
+    const index = tractorRegistry.findIndex(t => t.tractorNumber === number);
+    if(index === -1) return;
+    const tractor = tractorRegistry[index];
+    document.getElementById('chairmanOwner').value = tractor.owner;
+    document.getElementById('chairmanTractorNo').value = tractor.tractorNumber;
+    document.getElementById('chairmanWeight').value = tractor.weight;
+    document.getElementById('chairmanModel').value = tractor.model;
+    document.getElementById('editingTractorIndex').value = index;
+  }
+
+  function deleteTractor(number) {
+    if(confirm(currentLang==='mr' ? "तुम्ही हा ट्रॅक्टर हटवू इच्छिता?" : "Are you sure you want to delete this tractor?")){
+      tractorRegistry = tractorRegistry.filter(t => t.tractorNumber !== number);
+      saveAll();
+      renderTractorTable();
+      populateTransportDropdown();
+    }
+  }
+
+  function renderFarmerTable(filterText = '') {
+    const tableBody = document.querySelector('#farmerTable tbody');
+    tableBody.innerHTML = '';
+    const filteredFarmers = farmerRegistry.filter(f => f.name.toLowerCase().includes(filterText.toLowerCase()));
+    filteredFarmers.forEach((f, index) => {
+      const row = tableBody.insertRow();
+      row.insertCell(0).innerText = f.name;
+      row.insertCell(1).innerText = f.aadhar;
+      row.insertCell(2).innerText = f.mobile;
+      const editCell = row.insertCell(3);
+      const deleteCell = row.insertCell(4);
+      editCell.innerHTML = `<button onclick="editFarmer('${f.aadhar}')" class="btn-warning">Edit</button>`;
+      deleteCell.innerHTML = `<button onclick="deleteFarmer('${f.aadhar}')" class="btn-danger">Delete</button>`;
     });
-    translatePage();
   }
 
-  function saveFarmer(){
+  function filterFarmers() {
+    const searchText = document.getElementById('chairmanFarmerSearch').value;
+    renderFarmerTable(searchText);
+  }
+
+  function saveFarmer() {
     const name = document.getElementById('chairmanFarmerName').value.trim();
     const aadhar = document.getElementById('chairmanFarmerAadhar').value.trim();
     const shetiGatNo = document.getElementById('chairmanShetiGatNo').value.trim();
@@ -701,399 +810,393 @@
     const accountNo = document.getElementById('chairmanAccountNo').value.trim();
     const bankName = document.getElementById('chairmanBankName').value.trim();
     const ifsc = document.getElementById('chairmanIFSC').value.trim();
-    const msg = document.getElementById('farmerMsg');
-    msg.textContent = '';
-    msg.className = 'message';
+    const msgEl = document.getElementById('farmerMsg');
+    const editingIndex = document.getElementById('editingFarmerIndex').value;
+    msgEl.textContent = '';
 
-    if(!name || !aadhar || !shetiGatNo || !mobile || !accountNo || !bankName || !ifsc){
-      msg.textContent = currentLang==='mr' ? 'सर्व फील्ड भरा' : 'Fill all fields';
-      msg.classList.add('error');
+    if(!name || !aadhar){
+      msgEl.textContent = currentLang==='mr' ? "नाव आणि आधार नंबर आवश्यक आहे" : "Name and Aadhar are required";
+      msgEl.classList.add('error');
       return;
     }
-
-    const editIndex = parseInt(document.getElementById('editingFarmerIndex').value);
-    if(editIndex === -1){
-      if(farmerRegistry.find(f=> f.aadhar === aadhar)){
-        msg.textContent = currentLang==='mr' ? 'ही आधार क्र. आधीच आहे' : 'Aadhar already registered';
-        msg.classList.add('error');
+   
+    if(editingIndex != -1){
+      farmerRegistry[editingIndex] = {name, aadhar, shetiGatNo, mobile, accountNo, bankName, ifsc};
+      msgEl.textContent = currentLang==='mr' ? "शेतकरी माहिती अपडेट झाली" : "Farmer info updated";
+    } else {
+      const existing = farmerRegistry.find(f => f.aadhar === aadhar);
+      if(existing){
+        msgEl.textContent = currentLang==='mr' ? "हा आधार नंबर आधीच नोंदणीकृत आहे" : "Aadhar number already registered";
+        msgEl.classList.add('error');
         return;
       }
-      farmerRegistry.push({name,aadhar,shettiGatNo,mobile,accountNo,bankName,ifsc});
-      msg.textContent = currentLang==='mr' ? 'नवीन शेतकरी यशस्वीरित्या नोंदवला' : 'New farmer registered successfully';
-      msg.classList.add('success');
-    } else {
-      farmerRegistry[editIndex] = {name,aadhar,shettiGatNo,mobile,accountNo,bankName,ifsc};
-      msg.textContent = currentLang==='mr' ? 'शेतकरी माहिती अपडेट केली' : 'Farmer info updated';
-      msg.classList.add('success');
-      document.getElementById('editingFarmerIndex').value = -1;
+      farmerRegistry.push({name, aadhar, shetiGatNo, mobile, accountNo, bankName, ifsc});
+      msgEl.textContent = currentLang==='mr' ? "शेतकरी नोंदणी झाली" : "Farmer registered";
     }
-    clearFarmerForm();
+
+    msgEl.classList.add('success');
+    document.getElementById('chairmanFarmerName').value = '';
+    document.getElementById('chairmanFarmerAadhar').value = '';
+    document.getElementById('chairmanShetiGatNo').value = '';
+    document.getElementById('chairmanMobile').value = '';
+    document.getElementById('chairmanAccountNo').value = '';
+    document.getElementById('chairmanBankName').value = '';
+    document.getElementById('chairmanIFSC').value = '';
+    document.getElementById('editingFarmerIndex').value = -1;
     saveAll();
     renderFarmerTable();
-    initApp();
   }
 
-  function editFarmer(idx){
-    const f = farmerRegistry[idx];
-    document.getElementById('chairmanFarmerName').value = f.name;
-    document.getElementById('chairmanFarmerAadhar').value = f.aadhar;
-    document.getElementById('chairmanShetiGatNo').value = f.shettiGatNo;
-    document.getElementById('chairmanMobile').value = f.mobile;
-    document.getElementById('chairmanAccountNo').value = f.accountNo;
-    document.getElementById('chairmanBankName').value = f.bankName;
-    document.getElementById('chairmanIFSC').value = f.ifsc;
-    document.getElementById('editingFarmerIndex').value = idx;
-    window.scrollTo({top: 0, behavior: 'smooth'});
+  function editFarmer(aadhar) {
+    const index = farmerRegistry.findIndex(f => f.aadhar === aadhar);
+    if(index === -1) return;
+    const farmer = farmerRegistry[index];
+    document.getElementById('chairmanFarmerName').value = farmer.name;
+    document.getElementById('chairmanFarmerAadhar').value = farmer.aadhar;
+    document.getElementById('chairmanShetiGatNo').value = farmer.shetiGatNo;
+    document.getElementById('chairmanMobile').value = farmer.mobile;
+    document.getElementById('chairmanAccountNo').value = farmer.accountNo;
+    document.getElementById('chairmanBankName').value = farmer.bankName;
+    document.getElementById('chairmanIFSC').value = farmer.ifsc;
+    document.getElementById('editingFarmerIndex').value = index;
   }
 
-  function deleteFarmer(idx){
-    if(confirm(currentLang==='mr' ? 'तुम्हाला खात्री आहे का?' : 'Are you sure?')){
-      farmerRegistry.splice(idx,1);
+  function deleteFarmer(aadhar) {
+    if(confirm(currentLang==='mr' ? "तुम्ही हा शेतकरी हटवू इच्छिता?" : "Are you sure you want to delete this farmer?")){
+      farmerRegistry = farmerRegistry.filter(f => f.aadhar !== aadhar);
       saveAll();
       renderFarmerTable();
-      initApp();
     }
   }
 
-  function clearFarmerForm(){
-    document.getElementById('chairmanFarmerName').value='';
-    document.getElementById('chairmanFarmerAadhar').value='';
-    document.getElementById('chairmanShetiGatNo').value='';
-    document.getElementById('chairmanMobile').value='';
-    document.getElementById('chairmanAccountNo').value='';
-    document.getElementById('chairmanBankName').value='';
-    document.getElementById('chairmanIFSC').value='';
-    document.getElementById('editingFarmerIndex').value=-1;
-  }
-
-  // Render In-Out book for chairman
   function renderInOutBookTable() {
-    const tbody = document.querySelector('#inOutBookTable tbody');
-    tbody.innerHTML = '';
-    inOutBook.forEach(e => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${e.tractorNumber}</td><td>${e.slot}</td><td>${e.inTime}</td><td>${e.outTime || '-'}</td>`;
-      tbody.appendChild(tr);
+    const tableBody = document.querySelector('#inOutBookTable tbody');
+    tableBody.innerHTML = '';
+    inOutBook.forEach(entry => {
+      const row = tableBody.insertRow();
+      row.insertCell(0).innerText = entry.tractorNumber;
+      row.insertCell(1).innerText = entry.slot;
+      row.insertCell(2).innerText = entry.inTime;
+      row.insertCell(3).innerText = entry.outTime || 'N/A';
     });
   }
 
-  // Render Farmer Sales Book for chairman (see all farmers sales)
   function renderFarmerSalesTable() {
-    const tbody = document.querySelector('#farmerSalesTable tbody');
-    tbody.innerHTML = '';
-    farmerSalesBook.forEach(f => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${f.farmerName}</td><td>${f.sugarcaneWeight}</td><td>${f.date}</td>`;
-      tbody.appendChild(tr);
+    const tableBody = document.querySelector('#farmerSalesTable tbody');
+    tableBody.innerHTML = '';
+    farmerSalesBook.forEach(sale => {
+      const row = tableBody.insertRow();
+      row.insertCell(0).innerText = sale.farmerName;
+      row.insertCell(1).innerText = sale.sugarcaneWeight;
+      row.insertCell(2).innerText = sale.date;
     });
   }
 
-  // --- Transport Section functions ---
-  function renderTransportHistoryTable(){
-    const tbody = document.querySelector('#transportHistoryTable tbody');
-    tbody.innerHTML = '';
-    transportHistory.forEach(t => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${t.tractorNumber}</td><td>${t.farmerName}</td><td>${t.weight}</td><td>${t.distance}</td><td>${t.diesel}</td><td>${t.date}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
+  // Transport Functions
   function populateTransportDropdown(){
     const select = document.getElementById('transportTractorSelect');
-    select.innerHTML = '<option value="">Select Tractor</option>';
-    for(const tNum in parkedTractors){
-      if(!parkedTractors[tNum].timeOut){
-        let option = document.createElement('option');
-        option.value = tNum;
-        option.text = tNum;
-        select.appendChild(option);
-      }
-    }
+    select.innerHTML = `<option value="">${currentLang === 'mr' ? 'ट्रॅक्टर निवडा' : 'Select Tractor'}</option>`;
+    tractorRegistry.forEach(t => {
+      const option = document.createElement('option');
+      option.value = t.tractorNumber;
+      option.textContent = t.tractorNumber + ' (' + t.owner + ')';
+      select.appendChild(option);
+    });
   }
 
-  // Generate Transport Owner Bill
-  function generateTransportBill(){
-    if(currentRole !== 'transport'){
-      alert(currentLang==='mr' ? 'परवानगी नाही' : 'Permission denied');
-      return;
-    }
-    const tractorNum = document.getElementById('transportTractorSelect').value;
+  function generateTransportBill() {
+    const tractorNumber = document.getElementById('transportTractorSelect').value;
     const farmerName = document.getElementById('transportFarmerName').value.trim();
     const sugarcaneWeight = parseFloat(document.getElementById('transportSugarcaneWeight').value);
     const distance = parseFloat(document.getElementById('transportDistance').value);
     const diesel = parseFloat(document.getElementById('transportDiesel').value);
-    const msg = document.getElementById('transportMsg');
-    msg.textContent = ''; msg.className = 'message';
+    const msgEl = document.getElementById('transportMsg');
+    msgEl.textContent = '';
+    msgEl.className = 'message';
 
-    if(!tractorNum){
-      msg.textContent = currentLang==='mr' ? 'कृपया ट्रॅक्टर निवडा' : 'Please select tractor';
-      msg.classList.add('error');
-      return;
-    }
-    if(!farmerName){
-      msg.textContent = currentLang==='mr' ? 'कृपया शेतकरी नाव द्या' : 'Enter farmer name';
-      msg.classList.add('error');
-      return;
-    }
-    if(!tractorRegistry.find(t=> t.tractorNumber === tractorNum)){
-      msg.textContent = currentLang==='mr' ? 'ट्रॅक्टर नोंदणीकृत नाही' : 'Tractor not registered';
-      msg.classList.add('error');
-      return;
-    }
-    if(!farmerRegistry.find(f=> f.name.toLowerCase() === farmerName.toLowerCase())){
-      msg.textContent = currentLang==='mr' ? 'शेतकरी नोंदणीकृत नाही' : 'Farmer not registered';
-      msg.classList.add('error');
-      return;
-    }
-    if(isNaN(sugarcaneWeight) || sugarcaneWeight <= 0){
-      msg.textContent = currentLang==='mr' ? 'वैध ऊस वजन प्रविष्ट करा' : 'Enter valid sugarcane weight';
-      msg.classList.add('error');
-      return;
-    }
-    if(isNaN(distance) || distance<0){
-      msg.textContent = currentLang==='mr' ? 'वैध अंतर प्रविष्ट करा' : 'Enter valid distance';
-      msg.classList.add('error');
-      return;
-    }
-    if(isNaN(diesel) || diesel<0){
-      msg.textContent = currentLang==='mr' ? 'वैध डिझेल प्रमाण द्या' : 'Enter valid diesel amount';
-      msg.classList.add('error');
+    if(!tractorNumber || !farmerName || isNaN(sugarcaneWeight) || isNaN(distance) || isNaN(diesel) || sugarcaneWeight <= 0 || distance <= 0){
+      msgEl.textContent = currentLang==='mr' ? "सर्व माहिती योग्य प्रकारे भरा" : "Please fill all fields correctly";
+      msgEl.classList.add('error');
       return;
     }
 
-    transportHistory.push({
-      tractorNumber: tractorNum,
-      farmerName: farmerName,
-      weight: sugarcaneWeight,
-      distance: distance,
-      diesel: diesel,
-      date: new Date().toLocaleDateString()
-    });
+    const billAmount = distance * rates.transport - diesel * 90; // Assuming diesel price is 90 Rs/litre
+    const billDetails = {
+      tractorNumber,
+      farmerName,
+      sugarcaneWeight,
+      distance,
+      diesel,
+      date: new Date().toLocaleDateString(),
+      billAmount: billAmount,
+      isPaid: false,
+      paymentMethod: null
+    };
 
-    msg.textContent = currentLang==='mr' ? `ट्रान्सपोर्ट बिल तयार झाला: ट्रॅक्टर ${tractorNum}` : `Transport bill generated for tractor ${tractorNum}`;
-    msg.classList.add('success');
-
-    document.getElementById('transportFarmerName').value = '';
-    document.getElementById('transportSugarcaneWeight').value = '';
-    document.getElementById('transportDistance').value = '';
-    document.getElementById('transportDiesel').value = '';
-
+    transportHistory.push(billDetails);
     saveAll();
+    msgEl.textContent = currentLang==='mr' ? `ट्रान्सपोर्ट बिल तयार झाले. रक्कम: ₹${billAmount.toFixed(2)}` : `Transport bill generated. Amount: ₹${billAmount.toFixed(2)}`;
+    msgEl.classList.add('success');
     renderTransportHistoryTable();
-    updateDashboard();
-    populateTransportDropdown();
+    initApp();
   }
-
-  // Generate Farmer Bill
+ 
   function generateFarmerBill(){
-    if(currentRole !== 'transport'){
-      alert(currentLang==='mr' ? 'परवानगी नाही' : 'Permission denied');
-      return;
-    }
     const farmerName = document.getElementById('transportFarmerName').value.trim();
     const sugarcaneWeight = parseFloat(document.getElementById('transportSugarcaneWeight').value);
-    const msg = document.getElementById('transportMsg');
-    msg.textContent = ''; msg.className = 'message';
-
-    if(!farmerName){
-      msg.textContent = currentLang==='mr' ? 'कृपया शेतकरी नाव द्या' : 'Enter farmer name';
-      msg.classList.add('error');
+    const msgEl = document.getElementById('transportMsg');
+    msgEl.textContent = '';
+    msgEl.className = 'message';
+   
+    if(!farmerName || isNaN(sugarcaneWeight) || sugarcaneWeight <= 0){
+      msgEl.textContent = currentLang==='mr' ? "शेतकऱ्याचे नाव आणि उसाचे वजन योग्य भरा" : "Please enter valid farmer name and sugarcane weight";
+      msgEl.classList.add('error');
       return;
     }
-    if(!farmerRegistry.find(f=>f.name.toLowerCase() === farmerName.toLowerCase())){
-      msg.textContent = currentLang==='mr' ? 'शेतकरी नोंदणीकृत नाही' : 'Farmer not registered';
-      msg.classList.add('error');
-      return;
-    }
-    if(isNaN(sugarcaneWeight) || sugarcaneWeight <= 0){
-      msg.textContent = currentLang==='mr' ? 'वैध ऊस वजन प्रविष्ट करा' : 'Enter valid sugarcane weight';
-      msg.classList.add('error');
-      return;
-    }
-
-    farmerSalesBook.push({
-      farmerName: farmerName,
-      sugarcaneWeight: sugarcaneWeight,
-      date: new Date().toLocaleDateString()
-    });
-
-    msg.textContent = currentLang==='mr' ? `शेतकरी बिल तयार झाला: ${farmerName} ने ${sugarcaneWeight} टन ऊस विक्री केला` : `Farmer bill recorded: ${farmerName} sold ${sugarcaneWeight} tons`;
-    msg.classList.add('success');
-
-    // Clear inputs but keep tractor data for convenience
-    document.getElementById('transportFarmerName').value = '';
-    document.getElementById('transportSugarcaneWeight').value = '';
-
+   
+    const billAmount = sugarcaneWeight * rates.sugarcane;
+    const billDetails = {
+      farmerName,
+      sugarcaneWeight,
+      date: new Date().toLocaleDateString(),
+      billAmount: billAmount,
+      isPaid: false,
+      paymentMethod: null
+    };
+   
+    farmerSalesBook.push(billDetails);
     saveAll();
+    msgEl.textContent = currentLang==='mr' ? `शेतकरी बिल तयार झाले. रक्कम: ₹${billAmount.toFixed(2)}` : `Farmer bill generated. Amount: ₹${billAmount.toFixed(2)}`;
+    msgEl.classList.add('success');
     renderFarmerSalesTable();
-    updateDashboard();
+    initApp();
   }
 
-  // Print any table by Id
-  function printSection(tableId){
-    const table = document.getElementById(tableId);
-    if(!table) return alert('Table not found');
-    const style = `<style>table {width: 100%; border-collapse: collapse;} th, td {border:1px solid #000; padding:5px;}</style>`;
-    const newWin = window.open('', '', 'width=900,height=600');
-    newWin.document.write('<html><head><title>Print</title>'+style+'</head><body>');
-    newWin.document.write(table.outerHTML);
-    newWin.document.write('</body></html>');
-    newWin.document.close();
-    newWin.focus();
-    newWin.print();
-  }
-
-  // Farmer Section: show only that farmer's sales & tractor parking
-  function showFarmerData(){
-    document.getElementById('farmerLoginName').innerText = loginUser;
-
-    // Filter farmerSalesBook
-    const farmerSalesTbody = document.querySelector('#farmerOwnSalesTable tbody');
-    farmerSalesTbody.innerHTML = '';
-    farmerSalesBook.filter(s => s.farmerName.toLowerCase() === loginUser.toLowerCase()).forEach(s => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${s.sugarcaneWeight}</td><td>${s.date}</td>`;
-      farmerSalesTbody.appendChild(tr);
-    });
-
-    // Find tractors owned by farmer & their parking status
-    const farmerTractorsNumbers = tractorRegistry.filter(t => t.owner.toLowerCase() === loginUser.toLowerCase()).map(t => t.tractorNumber);
-
-    const parkingTbody = document.querySelector('#farmerTractorParkingTable tbody');
-    parkingTbody.innerHTML = '';
-    inOutBook.filter(e => farmerTractorsNumbers.includes(e.tractorNumber)).forEach(e => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${e.tractorNumber}</td><td>${e.slot}</td><td>${e.inTime}</td><td>${e.outTime || '-'}</td>`;
-      parkingTbody.appendChild(tr);
+  function renderTransportHistoryTable() {
+    const tableBody = document.querySelector('#transportHistoryTable tbody');
+    tableBody.innerHTML = '';
+    transportHistory.forEach(entry => {
+      const row = tableBody.insertRow();
+      row.insertCell(0).innerText = entry.tractorNumber;
+      row.insertCell(1).innerText = entry.farmerName;
+      row.insertCell(2).innerText = entry.sugarcaneWeight;
+      row.insertCell(3).innerText = entry.distance;
+      row.insertCell(4).innerText = entry.diesel;
+      row.insertCell(5).innerText = entry.date;
     });
   }
 
-  // Tractor Owner Section: show owned tractors parking info
-  function showTractorOwnerData(){
-    document.getElementById('tractorOwnerLoginName').innerText = loginUser;
+  function printBill(type) {
+    let billHTML = '';
+    const billDate = new Date().toLocaleDateString();
+   
+    if (type === 'transport') {
+        const lastBill = transportHistory[transportHistory.length - 1];
+        if (!lastBill) {
+            alert(currentLang === 'mr' ? 'आधी बिल तयार करा.' : 'Please generate a bill first.');
+            return;
+        }
+        billHTML = `
+            <h2>${currentLang === 'mr' ? 'ट्रान्सपोर्ट बिल' : 'Transport Bill'}</h2>
+            <p><strong>${currentLang === 'mr' ? 'तारीख' : 'Date'}:</strong> ${billDate}</p>
+            <p><strong>${currentLang === 'mr' ? 'ट्रॅक्टर नंबर' : 'Tractor Number'}:</strong> ${lastBill.tractorNumber}</p>
+            <p><strong>${currentLang === 'mr' ? 'शेतकऱ्याचे नाव' : 'Farmer Name'}:</strong> ${lastBill.farmerName}</p>
+            <p><strong>${currentLang === 'mr' ? 'उसाचे वजन (टन)' : 'Sugarcane Weight (tons)'}:</strong> ${lastBill.sugarcaneWeight}</p>
+            <p><strong>${currentLang === 'mr' ? 'अंतर (किमी)' : 'Distance (km)'}:</strong> ${lastBill.distance}</p>
+            <p><strong>${currentLang === 'mr' ? 'एकूण रक्कम' : 'Total Amount'}:</strong> ₹${lastBill.billAmount.toFixed(2)}</p>
+        `;
+    } else if (type === 'farmer') {
+        const lastBill = farmerSalesBook[farmerSalesBook.length - 1];
+        if (!lastBill) {
+            alert(currentLang === 'mr' ? 'आधी बिल तयार करा.' : 'Please generate a bill first.');
+            return;
+        }
+        billHTML = `
+            <h2>${currentLang === 'mr' ? 'शेतकरी बिल' : 'Farmer Bill'}</h2>
+            <p><strong>${currentLang === 'mr' ? 'तारीख' : 'Date'}:</strong> ${billDate}</p>
+            <p><strong>${currentLang === 'mr' ? 'शेतकऱ्याचे नाव' : 'Farmer Name'}:</strong> ${lastBill.farmerName}</p>
+            <p><strong>${currentLang === 'mr' ? 'उसाचे वजन (टन)' : 'Sugarcane Weight (tons)'}:</strong> ${lastBill.sugarcaneWeight}</p>
+            <p><strong>${currentLang === 'mr' ? 'एकूण रक्कम' : 'Total Amount'}:</strong> ₹${lastBill.billAmount.toFixed(2)}</p>
+        `;
+    }
 
-    // Find tractors owned by tractor owner
-    const ownTractorNos = tractorRegistry.filter(t=> t.owner.toLowerCase() === loginUser.toLowerCase()).map(t => t.tractorNumber);
-    const tbody = document.querySelector('#ownerTractorParkingTable tbody');
-    tbody.innerHTML = '';
-    inOutBook.filter(e => ownTractorNos.includes(e.tractorNumber)).forEach(e => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${e.tractorNumber}</td><td>${e.slot}</td><td>${e.inTime}</td><td>${e.outTime || '-'}</td>`;
-      tbody.appendChild(tr);
-    });
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write('<html><head><title>Bill</title></head><body>');
+    printWindow.document.write(billHTML);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.print();
   }
 
-  // Render InOut book for chairman
-  function renderInOutBookTable(){
-    const tbody = document.querySelector('#inOutBookTable tbody');
-    tbody.innerHTML = '';
-    inOutBook.forEach(e => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${e.tractorNumber}</td><td>${e.slot}</td><td>${e.inTime}</td><td>${e.outTime || '-'}</td>`;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // Render Farmer sales book for chairman
-  function renderFarmerSalesTable(){
-    const tbody = document.querySelector('#farmerSalesTable tbody');
-    tbody.innerHTML = '';
-    farmerSalesBook.forEach(f => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${f.farmerName}</td><td>${f.sugarcaneWeight}</td><td>${f.date}</td>`;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // Render tractor table for chairman
-  function renderTractorTable(){
-    const tbody = document.querySelector('#tractorTable tbody');
-    tbody.innerHTML = '';
-    tractorRegistry.forEach((t, index) => {
-      let tr = document.createElement('tr');
-      tr.innerHTML = `<td>${t.owner}</td><td>${t.tractorNumber}</td><td>${t.weight}</td><td>${t.model}</td>
-      <td><button onclick="editTractor(${index})" data-lang="edit">Edit</button></td>
-      <td><button class="btn-danger" onclick="deleteTractor(${index})" data-lang="delete">Delete</button></td>`;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // Render farmer table for chairman
-  function renderFarmerTable(){
-    const tbody = document.querySelector('#farmerTable tbody');
-    tbody.innerHTML = '';
-    farmerRegistry.forEach((f,index) => {
-      let tr = document.createElement('tr');
-      tr.innerHTML = `<td>${f.name}</td><td>${f.aadhar}</td><td>${f.mobile}</td>
-      <td><button onclick="editFarmer(${index})" data-lang="edit">Edit</button></td>
-      <td><button class="btn-danger" onclick="deleteFarmer(${index})" data-lang="delete">Delete</button></td>`;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // Render transport history for transport user
-  function renderTransportHistoryTable(){
-    const tbody = document.querySelector('#transportHistoryTable tbody');
-    tbody.innerHTML = '';
-    transportHistory.forEach((h, idx) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${h.tractorNumber}</td><td>${h.farmerName}</td><td>${h.weight}</td><td>${h.distance}</td><td>${h.diesel}</td><td>${h.date}</td>`;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // Populate dropdown for transport tractor select
-  function populateTransportDropdown(){
-    const select = document.getElementById('transportTractorSelect');
-    select.innerHTML = '<option value="">Select Tractor</option>';
-    for(const tn in parkedTractors){
-      if(!parkedTractors[tn].timeOut){
-        const option = document.createElement('option');
-        option.value = tn;
-        option.text = tn;
-        select.appendChild(option);
+  // Billing functions
+  function renderBillingTables() {
+    const farmerTableBody = document.querySelector('#billingFarmerTable tbody');
+    farmerTableBody.innerHTML = '';
+   
+    farmerSalesBook.forEach((bill, index) => {
+      const row = farmerTableBody.insertRow();
+      row.insertCell(0).innerText = bill.farmerName;
+      row.insertCell(1).innerText = bill.sugarcaneWeight;
+      row.insertCell(2).innerText = `₹${bill.billAmount.toFixed(2)}`;
+     
+      const statusCell = row.insertCell(3);
+      if (bill.isPaid === true) {
+        statusCell.innerHTML = `<span class="paid-bank">${currentLang === 'mr' ? 'भरले (बँक)' : 'Paid (Bank)'}</span>`;
+      } else if (bill.paymentMethod === 'cash') {
+        statusCell.innerHTML = `<span class="paid-cash">${currentLang === 'mr' ? 'भरले (कॅश)' : 'Paid (Cash)'}</span>`;
+      } else {
+        statusCell.innerHTML = `<span class="unpaid">${currentLang === 'mr' ? 'देय' : 'Unpaid'}</span>`;
       }
+     
+      const actionCell = row.insertCell(4);
+      if (!bill.isPaid && bill.paymentMethod !== 'cash') {
+        actionCell.innerHTML = `
+          <button onclick="markFarmerBillAsPaid(${index}, 'bank')" class="btn-success">Bank</button>
+          <button onclick="markFarmerBillAsPaid(${index}, 'cash')" class="btn-warning">Cash</button>
+        `;
+      } else {
+        actionCell.innerText = '✅';
+      }
+    });
+
+    const tractorTableBody = document.querySelector('#billingTractorTable tbody');
+    tractorTableBody.innerHTML = '';
+   
+    transportHistory.forEach((bill, index) => {
+      const row = tractorTableBody.insertRow();
+      row.insertCell(0).innerText = bill.tractorNumber;
+      row.insertCell(1).innerText = `₹${bill.billAmount.toFixed(2)}`;
+     
+      const statusCell = row.insertCell(2);
+      if (bill.isPaid === true) {
+        statusCell.innerHTML = `<span class="paid-bank">${currentLang === 'mr' ? 'भरले (बँक)' : 'Paid (Bank)'}</span>`;
+      } else if (bill.paymentMethod === 'cash') {
+        statusCell.innerHTML = `<span class="paid-cash">${currentLang === 'mr' ? 'भरले (कॅश)' : 'Paid (Cash)'}</span>`;
+      } else {
+        statusCell.innerHTML = `<span class="unpaid">${currentLang === 'mr' ? 'देय' : 'Unpaid'}</span>`;
+      }
+     
+      const actionCell = row.insertCell(3);
+      if (!bill.isPaid && bill.paymentMethod !== 'cash') {
+        actionCell.innerHTML = `
+          <button onclick="markTractorBillAsPaid(${index}, 'bank')" class="btn-success">Bank</button>
+          <button onclick="markTractorBillAsPaid(${index}, 'cash')" class="btn-warning">Cash</button>
+        `;
+      } else {
+        actionCell.innerText = '✅';
+      }
+    });
+  }
+
+  function markFarmerBillAsPaid(index, method) {
+    if (index >= 0 && index < farmerSalesBook.length) {
+        farmerSalesBook[index].isPaid = (method === 'bank');
+        farmerSalesBook[index].paymentMethod = method;
+        saveAll();
+        renderBillingTables();
+        updateDashboard();
+    }
+  }
+ 
+  function markTractorBillAsPaid(index, method) {
+    if (index >= 0 && index < transportHistory.length) {
+        transportHistory[index].isPaid = (method === 'bank');
+        transportHistory[index].paymentMethod = method;
+        saveAll();
+        renderBillingTables();
+        updateDashboard();
     }
   }
 
-  // Initialize app after login
-  function initApp(){
-    updateDashboard();
-    renderParkingGrid();
-    renderTractorTable();
-    renderFarmerTable();
-    renderInOutBookTable();
-    renderFarmerSalesTable();
-    renderTransportHistoryTable();
-    populateTransportDropdown();
-    translatePage();
-  }
+  // Farmer & Tractor Owner Sections
+  function showFarmerData() {
+    const farmer = farmerRegistry.find(f => f.aadhar === loginUser);
+    if(farmer){
+      document.getElementById('farmerLoginName').innerText = farmer.name;
+     
+      // Show sales
+      const salesTableBody = document.querySelector('#farmerOwnSalesTable tbody');
+      salesTableBody.innerHTML = '';
+      const farmerSales = farmerSalesBook.filter(s => s.farmerName === farmer.name);
+      farmerSales.forEach(sale => {
+        const row = salesTableBody.insertRow();
+        row.insertCell(0).innerText = sale.sugarcaneWeight;
+        row.insertCell(1).innerText = `₹${sale.billAmount.toFixed(2)}`;
+        const statusCell = row.insertCell(2);
+        if (sale.isPaid === true) {
+            statusCell.innerHTML = `<span class="paid-bank">Paid (Bank)</span>`;
+        } else if (sale.paymentMethod === 'cash') {
+            statusCell.innerHTML = `<span class="paid-cash">Paid (Cash)</span>`;
+        } else {
+            statusCell.innerHTML = `<span class="unpaid">Unpaid</span>`;
+        }
+        row.insertCell(3).innerText = sale.date;
+      });
 
-  // Print function
-  function printSection(tableId){
-    const tbl = document.getElementById(tableId);
-    if(!tbl){
-      alert(currentLang==='mr' ? "तालिका सापडली नाही" : "Table not found");
-      return;
+      // Show parking
+      const parkingTableBody = document.querySelector('#farmerTractorParkingTable tbody');
+      parkingTableBody.innerHTML = '';
+      const ownerTractors = tractorRegistry.filter(t => t.owner === farmer.name);
+      ownerTractors.forEach(t => {
+        const parkingRecords = inOutBook.filter(i => i.tractorNumber === t.tractorNumber);
+        parkingRecords.forEach(p => {
+            const row = parkingTableBody.insertRow();
+            row.insertCell(0).innerText = p.tractorNumber;
+            row.insertCell(1).innerText = p.slot;
+            row.insertCell(2).innerText = p.inTime;
+            row.insertCell(3).innerText = p.outTime || 'Currently Parked';
+        });
+      });
+
     }
-    const style = `<style>table {width:100%; border-collapse: collapse;} th, td {border:1px solid #000; padding:5px;}</style>`;
-    const newWin = window.open('','_blank','width=900,height=600');
-    newWin.document.write('<html><head><title>Print</title>'+style+'</head><body>');
-    newWin.document.write(tbl.outerHTML);
-    newWin.document.write('</body></html>');
-    newWin.document.close();
-    newWin.focus();
-    newWin.print();
+  }
+ 
+  function showTractorOwnerData() {
+    const tractor = tractorRegistry.find(t => t.tractorNumber === loginUser);
+    if(tractor){
+      document.getElementById('tractorOwnerLoginName').innerText = tractor.owner;
+
+      // Show parking
+      const parkingTableBody = document.querySelector('#ownerTractorParkingTable tbody');
+      parkingTableBody.innerHTML = '';
+      const tractorBills = transportHistory.filter(h => h.tractorNumber === tractor.tractorNumber);
+
+      tractorBills.forEach(bill => {
+          const row = parkingTableBody.insertRow();
+          row.insertCell(0).innerText = bill.tractorNumber;
+          row.insertCell(1).innerText = `₹${bill.billAmount.toFixed(2)}`;
+          const statusCell = row.insertCell(2);
+          if (bill.isPaid === true) {
+              statusCell.innerHTML = `<span class="paid-bank">Paid (Bank)</span>`;
+          } else if (bill.paymentMethod === 'cash') {
+              statusCell.innerHTML = `<span class="paid-cash">Paid (Cash)</span>`;
+          } else {
+              statusCell.innerHTML = `<span class="unpaid">Unpaid</span>`;
+          }
+          row.insertCell(3).innerText = bill.date;
+          row.insertCell(4).innerText = bill.outTime || 'N/A'; // Since outTime is not in transport history, this part needs adjustment
+      });
+    }
   }
 
-  // Initialize login UI placeholders & language
-  updateLoginPlaceholders();
+
+  function saveRates() {
+      rates.sugarcane = parseFloat(document.getElementById('sugarcaneRate').value);
+      rates.transport = parseFloat(document.getElementById('transportRate').value);
+      saveAll();
+      const msgEl = document.getElementById('rateMsg');
+      msgEl.textContent = currentLang === 'mr' ? 'दर यशस्वीरित्या सेव्ह केले!' : 'Rates saved successfully!';
+      msgEl.classList.add('success');
+      setTimeout(() => msgEl.textContent = '', 3000);
+      updateDashboard();
+  }
+
+  // Initial call to set up the page
   translatePage();
+
 </script>
 
 </body>
 </html>
+
 
